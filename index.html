@@ -148,7 +148,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v2.2 · 2026-04-26';
+const VERSION='v2.3 · 2026-04-26';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
 let unsubs=[];
 
@@ -779,8 +779,7 @@ window.handlePinKey=function(k){
   window._pinLock=true;
   setTimeout(()=>{window._pinLock=false;},80);
   if(!(S.screen==='login'&&(S.pinScreen==='enter'||S.pinScreen==='set')))return;
-  const k=b.dataset.k;
-    if(k==='')return;
+  if(k==='')return;
     const err=$('pinErr');
     if(k==='⌫'){
       S.pinEntry=(S.pinEntry||'').slice(0,-1);
