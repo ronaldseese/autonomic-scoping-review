@@ -141,7 +141,8 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-let S={screen:'login',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25};
+const VERSION='v1.4 · 2026-04-26';
+let S={screen:'login',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
 let unsubs=[];
 
 const $=id=>document.getElementById(id);
@@ -209,7 +210,7 @@ function render(){
   attachEvents();
 }
 
-function syncBar(){return`<div class="sync-status"><span class="sync-dot ${S.syncStatus}" id="syncDot"></span><span id="syncLbl">${S.syncStatus==='live'?'Live':S.syncStatus==='syncing'?'Syncing…':'Offline'}</span></div>`;}
+function syncBar(){return`<div class="sync-status"><span style="font-size:10px;color:#bbb;margin-right:6px">${VERSION}</span><span class="sync-dot ${S.syncStatus}" id="syncDot"></span><span id="syncLbl">${S.syncStatus==='live'?'Live':S.syncStatus==='syncing'?'Syncing…':'Offline'}</span></div>`;}
 
 function rLogin(){
   return`<div style="max-width:400px;margin:2rem auto">
@@ -422,19 +423,39 @@ function rCompile(){
 }
 
 function rImport(){
+  const p=S.csvParsed;
+  const nonEng=p?p.filter(r=>r.language&&r.language!=='eng').length:0;
+  const noAbs=p?p.filter(r=>!r.abstract).length:0;
+  const previewHtml=p?`<div style="background:#f5f4f0;border-radius:7px;padding:14px;font-size:12px;margin-top:12px">
+    <div style="font-weight:600;font-size:13px;margin-bottom:6px">${p.length} records parsed from ${S.csvFileName}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:#fff;border:1px solid #e0dfd8;border-radius:6px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:600">${p.length}</div><div style="font-size:10px;color:#888">Total records</div></div>
+      <div style="background:#fff;border:1px solid #e0dfd8;border-radius:6px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#854F0B">${nonEng}</div><div style="font-size:10px;color:#888">Non-English</div></div>
+      <div style="background:#fff;border:1px solid #e0dfd8;border-radius:6px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#888">${noAbs}</div><div style="font-size:10px;color:#888">No abstract</div></div>
+    </div>
+    <div style="font-weight:500;margin-bottom:6px">First 3 records:</div>
+    ${p.slice(0,3).map(r=>`<div style="padding:6px 0;border-bottom:1px solid #e0dfd8">
+      <div style="font-weight:500">${r.title}</div>
+      <div style="color:#888;font-size:11px">${r.rayyanId} · ${r.authors} · ${r.year} · ${r.language||'?'}${r.pmid?' · PMID:'+r.pmid:''}</div>
+      ${r.abstract?`<div style="color:#666;font-size:11px;margin-top:2px">${r.abstract.slice(0,120)}…</div>`:''}
+    </div>`).join('')}
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button id="confirmImport" class="btn-primary btn-sm">Confirm Import — replaces ${Object.keys(S.records).length} current records</button>
+      <button id="cancelImport" class="btn-sm">Cancel</button>
+    </div>
+  </div>`:'';
   return`<div><div class="card">
     <div class="section-header">Import from Rayyan CSV</div>
     <p style="font-size:12px;color:#888;margin-bottom:16px;line-height:1.7">
-      Export your articles from Rayyan as CSV, then upload the file below. The app reads these columns directly:
-      <code>key</code> (Rayyan ID), <code>title</code>, <code>authors</code>, <code>year</code>, <code>journal</code>,
+      Export your articles from Rayyan as CSV, then upload the file below. Reads:
+      <code>key</code>, <code>title</code>, <code>authors</code>, <code>year</code>, <code>journal</code>,
       <code>pubmed_id</code>, <code>language</code>, <code>abstract</code>.<br>
-      Non-English records import normally — reviewers see a language tag and must confirm full text language via Q2.<br>
       <strong style="color:#A32D2D">Warning: import clears all existing records, assignments, and decisions.</strong>
     </p>
     <div class="upload-zone" id="uploadZone">
       <div class="upload-zone-label">
         <div style="font-size:28px;margin-bottom:8px">📄</div>
-        <div>Drag and drop your CSV here, or use the button below</div>
+        <div>${p?`<strong style="color:#3B6D11">✓ ${S.csvFileName} loaded</strong>`:'Drag and drop your CSV here, or use the button below'}</div>
         <div style="font-size:11px;margin-top:4px">Rayyan export .csv · typically 5,000–6,000 records</div>
       </div>
       <div class="file-input-wrap">
@@ -445,7 +466,7 @@ function rImport(){
       <button id="resetSample" class="btn-danger btn-sm">Reset to Sample Data</button>
       <span id="csvMsg" style="font-size:12px;color:#888"></span>
     </div>
-    <div id="csvPreview"></div>
+    ${previewHtml}
   </div></div>`;
 }
 
@@ -522,9 +543,8 @@ async function doImport(parsed){
     await b.commit();
     if($msg)$msg.textContent=`Importing… ${Math.min(i+CHUNK,parsed.length)}/${parsed.length}`;
   }
-  if($msg)$msg.textContent=`${parsed.length} records imported successfully.`;
-  $('csvPreview').innerHTML='';
-  toast(`${parsed.length} records imported`);
+  S.csvParsed=null;S.csvFileName='';
+  toast(`${parsed.length} records imported — assign reviewers to begin screening`);
 }
 
 function dlCSV(rows,name){
@@ -584,6 +604,8 @@ function attachEvents(){
   });
 
   // filters
+  $('confirmImport')?.addEventListener('click',()=>{if(S.csvParsed)doImport(S.csvParsed);});
+  $('cancelImport')?.addEventListener('click',()=>{S.csvParsed=null;S.csvFileName='';render();});
   $('filterRev')?.addEventListener('change',e=>{S.filterRev=e.target.value;S.page=1;render();});
   $('filterStat')?.addEventListener('change',e=>{S.filterStat=e.target.value;S.page=1;render();});
   $('pgPrev')?.addEventListener('click',()=>{if(S.page>1){S.page--;render();}});
@@ -643,35 +665,14 @@ function attachEvents(){
 
 function handleFile(file){
   if(!file)return;
-  const$msg=$('csvMsg');
-  if($msg)$msg.textContent=`Reading ${file.name}…`;
+  toast('Reading '+file.name+'…');
   const reader=new FileReader();
   reader.onload=e=>{
-    const raw=e.target.result;
-    const parsed=parseRayyan(raw);
-    if(!parsed||!parsed.length){if($msg)$msg.textContent='Could not parse CSV — check format.';return;}
-    const nonEng=parsed.filter(r=>r.language&&r.language!=='eng').length;
-    const noAbs=parsed.filter(r=>!r.abstract).length;
-    const prev=$('csvPreview');
-    if(prev)prev.innerHTML=`<div style="background:#f5f4f0;border-radius:7px;padding:14px;font-size:12px">
-      <div style="font-weight:600;font-size:13px;margin-bottom:6px">${parsed.length} records parsed from ${file.name}</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
-        <div style="background:#fff;border:1px solid #e0dfd8;border-radius:6px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:600">${parsed.length}</div><div style="font-size:10px;color:#888">Total records</div></div>
-        <div style="background:#fff;border:1px solid #e0dfd8;border-radius:6px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#854F0B">${nonEng}</div><div style="font-size:10px;color:#888">Non-English (language tag shown)</div></div>
-        <div style="background:#fff;border:1px solid #e0dfd8;border-radius:6px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#888">${noAbs}</div><div style="font-size:10px;color:#888">No abstract</div></div>
-      </div>
-      <div style="font-weight:500;margin-bottom:6px">First 3 records:</div>
-      ${parsed.slice(0,3).map(r=>`<div style="padding:6px 0;border-bottom:1px solid #e0dfd8">
-        <div style="font-weight:500">${r.title}</div>
-        <div style="color:#888;font-size:11px">${r.rayyanId} · ${r.authors} · ${r.year} · ${r.language||'?'}${r.pmid?' · PMID:'+r.pmid:''}</div>
-        ${r.abstract?`<div style="color:#666;font-size:11px;margin-top:2px">${r.abstract.slice(0,120)}…</div>`:''}
-      </div>`).join('')}
-      <button id="confirmImport" class="btn-primary btn-sm" style="margin-top:12px">Confirm Import — replaces ${Object.keys(S.records).length} current records</button>
-      <button id="cancelImport" class="btn-sm" style="margin-left:8px;margin-top:12px">Cancel</button>
-    </div>`;
-    if($msg)$msg.textContent='Preview ready — confirm to import.';
-    $('confirmImport')?.addEventListener('click',()=>doImport(parsed));
-    $('cancelImport')?.addEventListener('click',()=>{if(prev)prev.innerHTML='';if($msg)$msg.textContent='';});
+    const parsed=parseRayyan(e.target.result);
+    if(!parsed||!parsed.length){toast('Could not parse CSV — check format.',4000);return;}
+    S.csvParsed=parsed;
+    S.csvFileName=file.name;
+    render();
   };
   reader.readAsText(file);
 }
