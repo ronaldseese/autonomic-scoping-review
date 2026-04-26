@@ -141,7 +141,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v1.4 · 2026-04-26';
+const VERSION='v1.5 · 2026-04-26';
 let S={screen:'login',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
 let unsubs=[];
 
@@ -197,22 +197,24 @@ async function initSample(){
 }
 function startListeners(){
   unsubs.forEach(u=>u());unsubs=[];
-  unsubs.push(onSnapshot(collection(db,'records'),snap=>{S.records={};snap.forEach(d=>{S.records[d.id]=d.data();});setSync('live');render();},()=>setSync('error')));
-  unsubs.push(onSnapshot(collection(db,'decisions'),snap=>{S.decisions={};snap.forEach(d=>{const x=d.data();if(!S.decisions[x.rev])S.decisions[x.rev]={};S.decisions[x.rev][x.recId]=x.answers||{};});render();}));
-  unsubs.push(onSnapshot(collection(db,'assignments'),snap=>{S.assignments={};snap.forEach(d=>{const x=d.data();if(!S.assignments[x.recId])S.assignments[x.recId]={};S.assignments[x.recId][x.rev]=x.assigned;});render();}));
+  unsubs.push(onSnapshot(collection(db,'records'),snap=>{S.records={};snap.forEach(d=>{S.records[d.id]=d.data();});setSync('live');safeRender();},()=>setSync('error')));
+  unsubs.push(onSnapshot(collection(db,'decisions'),snap=>{S.decisions={};snap.forEach(d=>{const x=d.data();if(!S.decisions[x.rev])S.decisions[x.rev]={};S.decisions[x.rev][x.recId]=x.answers||{};});safeRender();}));
+  unsubs.push(onSnapshot(collection(db,'assignments'),snap=>{S.assignments={};snap.forEach(d=>{const x=d.data();if(!S.assignments[x.recId])S.assignments[x.recId]={};S.assignments[x.recId][x.rev]=x.assigned;});safeRender();}));
 }
 
+function safeRender(){
+  // Don't wipe the import tab while user has a file loaded and ready to confirm
+  if(S.screen==='admin'&&S.adminTab==='import'&&S.csvParsed)return;
+  render();
+}
 function render(){
   const app=$('app');
   if(S.screen==='login')app.innerHTML=rLogin();
   else if(S.screen==='reviewer')app.innerHTML=rReviewer();
   else if(S.screen==='admin')app.innerHTML=rAdmin();
   attachEvents();
-  // confirm/cancel must bind after DOM is painted
-  setTimeout(()=>{
-    $('confirmImport')?.addEventListener('click',()=>{if(S.csvParsed)doImport(S.csvParsed);});
-    $('cancelImport')?.addEventListener('click',()=>{S.csvParsed=null;S.csvFileName='';render();});
-  },0);
+  $('confirmImport')?.addEventListener('click',()=>{if(S.csvParsed)doImport(S.csvParsed);});
+  $('cancelImport')?.addEventListener('click',()=>{S.csvParsed=null;S.csvFileName='';render();});
 }
 
 function syncBar(){return`<div class="sync-status"><span style="font-size:10px;color:#bbb;margin-right:6px">${VERSION}</span><span class="sync-dot ${S.syncStatus}" id="syncDot"></span><span id="syncLbl">${S.syncStatus==='live'?'Live':S.syncStatus==='syncing'?'Syncing…':'Offline'}</span></div>`;}
