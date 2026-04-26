@@ -141,7 +141,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v1.7 · 2026-04-26';
+const VERSION='v1.8 · 2026-04-26';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
 let unsubs=[];
 
@@ -667,6 +667,26 @@ function attachEvents(){
     }
   }));
   $('pinBack')?.addEventListener('click',()=>{S.pinScreen='select';S.user=null;S.pinEntry='';S.pinSetFirst='';render();});
+  // Keyboard input for PIN screens
+  if(S.screen==='login'&&(S.pinScreen==='enter'||S.pinScreen==='set')){
+    const kHandler=e=>{
+      if(e.key>='0'&&e.key<='9'){
+        const btn=document.querySelector(`.pin-key[data-k="${e.key}"]`);
+        if(btn)btn.click();
+      } else if(e.key==='Backspace'){
+        const btn=document.querySelector('.pin-key[data-k="⌫"]');
+        if(btn)btn.click();
+      } else if(e.key==='Escape'){
+        const back=$('pinBack');if(back)back.click();
+      }
+    };
+    document.addEventListener('keydown',kHandler);
+    // store so we can remove it on next render
+    window._pinKH=kHandler;
+  } else if(window._pinKH){
+    document.removeEventListener('keydown',window._pinKH);
+    window._pinKH=null;
+  }
   $('adminLogin')?.addEventListener('click',()=>{
     if($('adminpw').value===ADMIN_PW){S.isAdmin=true;S.screen='admin';S.page=1;render();}
     else $('adminErr').style.display='block';
