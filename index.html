@@ -7,7 +7,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#1a1a1a;background:#f5f4f0;min-height:100vh}
-.app{max-width:920px;margin:0 auto;padding:1.5rem 1rem}
+.app{max-width:940px;margin:0 auto;padding:1.5rem 1rem}
 input,select,textarea{font-family:inherit;font-size:13px;padding:7px 10px;border:1px solid #d0cfc8;border-radius:6px;background:#fff;color:#1a1a1a;width:100%}
 input:focus,select:focus,textarea:focus{outline:none;border-color:#185FA5;box-shadow:0 0 0 3px rgba(24,95,165,0.12)}
 button{font-family:inherit;font-size:13px;padding:7px 16px;border:1px solid #d0cfc8;border-radius:6px;background:#fff;color:#1a1a1a;cursor:pointer;transition:all 0.15s}
@@ -37,6 +37,11 @@ button:disabled{opacity:0.4;cursor:default;pointer-events:none}
 .logo-mark{width:36px;height:36px;background:#185FA5;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;flex-shrink:0}
 .logo-title{font-size:16px;font-weight:600}
 .logo-text{font-size:12px;color:#888;margin-top:1px}
+/* Abstract section */
+.abstract-toggle{background:none;border:none;padding:0;font-size:12px;color:#185FA5;cursor:pointer;text-decoration:underline;text-underline-offset:2px;margin-top:5px;display:inline-block;font-family:inherit}
+.abstract-toggle:hover{color:#0C447C;background:none}
+.abstract-body{margin-top:8px;background:#fafaf8;border:1px solid #e8e7e0;border-radius:7px;padding:10px 12px;font-size:12px;line-height:1.7;color:#2a2a2a;max-height:220px;overflow-y:auto}
+/* Q rows */
 .q-row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #f0efe8}
 .q-row:last-child{border-bottom:none}
 .q-num{font-size:11px;font-weight:600;color:#888;min-width:26px;margin-top:3px;background:#f5f4f0;padding:2px 5px;border-radius:4px;text-align:center;flex-shrink:0}
@@ -51,6 +56,16 @@ button:disabled{opacity:0.4;cursor:default;pointer-events:none}
 .decision-bar{padding:10px 14px;border-radius:7px;font-size:13px;font-weight:600;margin-top:12px}
 .decision-exclude{background:#FCEBEB;color:#A32D2D;border:1px solid #F09595}
 .decision-include{background:#EAF3DE;color:#3B6D11;border:1px solid #97C459}
+/* Q5 dx */
+.dx-toggle{background:none;border:none;padding:0;font-size:11px;color:#185FA5;cursor:pointer;text-decoration:underline;text-underline-offset:2px;margin-top:5px;display:inline-block;font-family:inherit}
+.dx-toggle:hover{color:#0C447C;background:none}
+.dx-panel{margin-top:8px;background:#f0f6ff;border:1px solid #B5D4F4;border-radius:7px;padding:10px 12px}
+.dx-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#185FA5;margin-bottom:7px}
+.dx-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px 16px}
+.dx-item{font-size:11px;color:#0C447C;padding:2px 0;line-height:1.4}
+.dx-item::before{content:"· ";color:#85B7EB}
+.dx-note{margin-top:8px;font-size:11px;color:#185FA5;border-top:1px solid #B5D4F4;padding-top:6px}
+/* stats / layout */
 .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem}
 .stat-card{background:#fff;border:1px solid #e0dfd8;border-radius:8px;padding:12px;text-align:center}
 .stat-num{font-size:24px;font-weight:600}
@@ -63,7 +78,6 @@ button:disabled{opacity:0.4;cursor:default;pointer-events:none}
 .compile-header{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#888;display:grid;grid-template-columns:40px 1fr 175px 100px;gap:8px;padding:0 0 8px;border-bottom:1px solid #e0dfd8;margin-bottom:4px}
 .progress-bar{height:4px;background:#e0dfd8;border-radius:2px;overflow:hidden}
 .progress-fill{height:100%;background:#185FA5;border-radius:2px}
-textarea{min-height:80px;resize:vertical;font-family:'SF Mono',Monaco,monospace;font-size:11px}
 .conflict-note{font-size:11px;color:#993556;margin-top:3px;font-weight:500}
 .sync-status{display:flex;align-items:center;gap:6px;font-size:11px;color:#888;margin-left:auto}
 .sync-dot{width:7px;height:7px;border-radius:50%;background:#ccc;flex-shrink:0}
@@ -73,23 +87,21 @@ textarea{min-height:80px;resize:vertical;font-family:'SF Mono',Monaco,monospace;
 .reviewer-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px}
 .reviewer-btn{padding:12px;font-size:14px;font-weight:600;border-radius:8px;border:2px solid #e0dfd8}
 .reviewer-btn:hover{border-color:#185FA5;color:#185FA5;background:#f0f6ff}
-.toast{position:fixed;bottom:20px;right:20px;background:#1a1a1a;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;max-width:320px}
+.toast{position:fixed;bottom:20px;right:20px;background:#1a1a1a;color:#fff;padding:10px 16px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:opacity 0.3s;pointer-events:none;max-width:340px}
 .toast.show{opacity:1}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid #e0dfd8;border-top-color:#185FA5;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .filter-bar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
 .filter-bar select{width:auto;font-size:12px;padding:5px 8px}
-.dx-toggle{background:none;border:none;padding:0;font-size:11px;color:#185FA5;cursor:pointer;text-decoration:underline;text-underline-offset:2px;margin-top:5px;display:inline-block}
-.dx-toggle:hover{color:#0C447C;background:none}
-.dx-panel{margin-top:8px;background:#f0f6ff;border:1px solid #B5D4F4;border-radius:7px;padding:10px 12px}
-.dx-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:#185FA5;margin-bottom:7px}
-.dx-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px 16px}
-.dx-item{font-size:11px;color:#0C447C;padding:2px 0;line-height:1.4}
-.dx-item::before{content:"· ";color:#85B7EB}
-.dx-note{margin-top:8px;font-size:11px;color:#185FA5;border-top:1px solid #B5D4F4;padding-top:6px}
 .pager{display:flex;gap:8px;align-items:center;justify-content:center;margin-top:1rem;padding-top:1rem;border-top:1px solid #e0dfd8}
 .pager span{font-size:12px;color:#888}
 code{font-family:'SF Mono',Monaco,monospace;font-size:11px;background:#f5f4f0;padding:1px 5px;border-radius:3px}
+/* File upload zone */
+.upload-zone{border:2px dashed #d0cfc8;border-radius:10px;padding:2rem;text-align:center;cursor:pointer;transition:all 0.2s;background:#fafaf8;margin-bottom:12px}
+.upload-zone:hover,.upload-zone.drag{border-color:#185FA5;background:#f0f6ff}
+.upload-zone input[type=file]{display:none}
+.upload-zone-label{font-size:13px;color:#888;line-height:1.6}
+.upload-zone-label strong{color:#185FA5;cursor:pointer}
 </style>
 </head>
 <body>
@@ -99,38 +111,12 @@ code{font-family:'SF Mono',Monaco,monospace;font-size:11px;background:#f5f4f0;pa
 <div class="toast" id="toast"></div>
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-import{getFirestore,doc,setDoc,collection,onSnapshot,writeBatch,deleteDoc,getDocs,serverTimestamp}from"https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+import{getFirestore,doc,setDoc,collection,onSnapshot,writeBatch,deleteDoc,getDocs}from"https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
-const FB={
-  apiKey:"AIzaSyC8eLWQGJTX_cftqnJw2B-ltE8U533TlyE",
-  authDomain:"autonomic-scoping-review-9b5fb.firebaseapp.com",
-  projectId:"autonomic-scoping-review-9b5fb",
-  storageBucket:"autonomic-scoping-review-9b5fb.firebasestorage.app",
-  messagingSenderId:"431307735290",
-  appId:"1:431307735290:web:f574bda7558022f35dc943"
-};
+const FB={apiKey:"AIzaSyC8eLWQGJTX_cftqnJw2B-ltE8U533TlyE",authDomain:"autonomic-scoping-review-9b5fb.firebaseapp.com",projectId:"autonomic-scoping-review-9b5fb",storageBucket:"autonomic-scoping-review-9b5fb.firebasestorage.app",messagingSenderId:"431307735290",appId:"1:431307735290:web:f574bda7558022f35dc943"};
 const db=getFirestore(initializeApp(FB));
 
-const DX=[
-  "Familial dysautonomia (Riley-Day / HSAN III)",
-  "HSAN I–V",
-  "Dopamine beta-hydroxylase deficiency",
-  "AADC deficiency",
-  "MEN2B (autonomic features)",
-  "Autoimmune autonomic ganglionopathy (AAG)",
-  "Paraneoplastic autonomic neuropathy",
-  "Lambert-Eaton (autonomic features)",
-  "POTS — primary/idiopathic only",
-  "Neurogenic orthostatic hypotension — primary",
-  "Pure autonomic failure (PAF)",
-  "Baroreflex failure — primary",
-  "Multiple system atrophy (MSA)",
-  "Lewy body autonomic failure",
-  "Parkinson disease — predominant autonomic failure",
-  "Neurocardiogenic syncope — primary dysautonomia cohort only",
-  "Chagas disease autonomic neuropathy",
-  "Acute pandysautonomia",
-];
+const DX=["Familial dysautonomia (Riley-Day / HSAN III)","HSAN I–V","Dopamine beta-hydroxylase deficiency","AADC deficiency","MEN2B (autonomic features)","Autoimmune autonomic ganglionopathy (AAG)","Paraneoplastic autonomic neuropathy","Lambert-Eaton (autonomic features)","POTS — primary/idiopathic only","Neurogenic orthostatic hypotension — primary","Pure autonomic failure (PAF)","Baroreflex failure — primary","Multiple system atrophy (MSA)","Lewy body autonomic failure","Parkinson disease — predominant autonomic failure","Neurocardiogenic syncope — primary dysautonomia cohort only","Chagas disease autonomic neuropathy","Acute pandysautonomia"];
 
 const QS=[
   {id:'q1',text:'Age of participants >24 months (study NOT focused on infants ≤24 months)?'},
@@ -143,19 +129,19 @@ const QS=[
 const REVS=['AF','JH','LH','CS','RS'];
 const ADMIN_PW='TAL2026';
 const SAMPLE=[
-  {id:'s1',rayyanId:'sample-1',title:'Autonomic dysfunction in children with autism spectrum disorder',authors:'Smith J, Doe A',year:2022,journal:'J Autism Dev Disord',pmid:'',language:'eng'},
-  {id:'s2',rayyanId:'sample-2',title:'Heart rate variability and sensory processing in ASD toddlers',authors:'Patel R, Kim S',year:2021,journal:'Autism Research',pmid:'',language:'eng'},
-  {id:'s3',rayyanId:'sample-3',title:'Sympathetic nervous system response in autistic children aged 3–12',authors:'Jones M, Brown L',year:2023,journal:'Front Neurosci',pmid:'',language:'eng'},
-  {id:'s4',rayyanId:'sample-4',title:'Parasympathetic tone and social behavior in ASD',authors:'Chen W, Park Y',year:2020,journal:'Biol Psychiatry',pmid:'',language:'eng'},
-  {id:'s5',rayyanId:'sample-5',title:'Electrodermal activity as biomarker in autism: systematic review',authors:'Lopez C, Williams R',year:2022,journal:'Neurosci Biobehav Rev',pmid:'',language:'eng'},
-  {id:'s6',rayyanId:'sample-6',title:'Pupillary light reflex and autonomic arousal in ASD adolescents',authors:'Nguyen T, Davis P',year:2023,journal:'J Child Neurol',pmid:'',language:'eng'},
-  {id:'s7',rayyanId:'sample-7',title:'Baroreflex sensitivity and autism: a pilot study',authors:'Martinez A, Taylor K',year:2021,journal:'Pediatr Neurol',pmid:'',language:'eng'},
-  {id:'s8',rayyanId:'sample-8',title:'Resting heart rate variability across ASD severity levels',authors:'Anderson B, White H',year:2022,journal:'Dev Neuropsychol',pmid:'',language:'eng'},
-  {id:'s9',rayyanId:'sample-9',title:'Skin conductance responses to emotional stimuli in autism',authors:'Thomas G, Jackson F',year:2020,journal:'Psychophysiology',pmid:'',language:'eng'},
-  {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng'},
+  {id:'s1',rayyanId:'sample-1',title:'Autonomic dysfunction in children with autism spectrum disorder',authors:'Smith J, Doe A',year:2022,journal:'J Autism Dev Disord',pmid:'',language:'eng',abstract:'Children with autism spectrum disorder (ASD) frequently exhibit signs of autonomic nervous system dysfunction, including altered heart rate variability, electrodermal activity, and thermoregulation. This study examined autonomic profiles in 42 children with ASD aged 4–12 years compared to 40 typically developing controls using ambulatory monitoring. Results indicated significantly reduced vagal tone and elevated sympathetic reactivity in the ASD group. Findings support the autonomic imbalance hypothesis of ASD and suggest potential biomarker utility for clinical stratification.'},
+  {id:'s2',rayyanId:'sample-2',title:'Heart rate variability and sensory processing in ASD toddlers',authors:'Patel R, Kim S',year:2021,journal:'Autism Research',pmid:'',language:'eng',abstract:'Sensory processing differences are a hallmark feature of ASD. This study investigated the relationship between HRV and sensory reactivity in 28 toddlers with ASD (mean age 22 months). Respiratory sinus arrhythmia was measured during standardized sensory tasks. Lower RSA was associated with greater sensory hypersensitivity. Implications for early autonomic biomarkers of ASD are discussed.'},
+  {id:'s3',rayyanId:'sample-3',title:'Sympathetic nervous system response in autistic children aged 3–12',authors:'Jones M, Brown L',year:2023,journal:'Front Neurosci',pmid:'',language:'eng',abstract:'Skin conductance level and response magnitude were assessed in 55 autistic children during rest and social challenge paradigms. Autistic children demonstrated elevated baseline EDA and attenuated phasic responses compared to neurotypical peers. Age-related trajectories diverged between groups, with sympathetic tone remaining elevated across the developmental period studied in autism.'},
+  {id:'s4',rayyanId:'sample-4',title:'Parasympathetic tone and social behavior in ASD',authors:'Chen W, Park Y',year:2020,journal:'Biol Psychiatry',pmid:'',language:'eng',abstract:'Vagal tone, indexed by high-frequency HRV, was measured at rest and during a social interaction task in adolescents with and without ASD. Lower resting vagal tone predicted poorer social reciprocity scores on the ADOS-2. Respiratory gating of cardiac output was also reduced in the ASD group, consistent with polyvagal theory predictions.'},
+  {id:'s5',rayyanId:'sample-5',title:'Electrodermal activity as biomarker in autism: systematic review',authors:'Lopez C, Williams R',year:2022,journal:'Neurosci Biobehav Rev',pmid:'',language:'eng',abstract:'A systematic review of 38 studies examining EDA in autism spectrum disorder. Consistent elevation of tonic EDA and reduced habituation of phasic responses were identified across studies. Methodological heterogeneity in electrode placement, recording duration, and stimulus type limited meta-analytic synthesis. Recommendations for standardization are provided.'},
+  {id:'s6',rayyanId:'sample-6',title:'Pupillary light reflex and autonomic arousal in ASD adolescents',authors:'Nguyen T, Davis P',year:2023,journal:'J Child Neurol',pmid:'',language:'eng',abstract:'Pupillometry offers a non-invasive window into autonomic function via the pupillary light reflex. This study measured PLR latency, amplitude, and redilation velocity in 30 ASD adolescents and 30 controls. ASD participants showed reduced PLR amplitude and slower redilation, consistent with reduced parasympathetic drive. Pupillometry is proposed as a scalable autonomic biomarker.'},
+  {id:'s7',rayyanId:'sample-7',title:'Baroreflex sensitivity and autism: a pilot study',authors:'Martinez A, Taylor K',year:2021,journal:'Pediatr Neurol',pmid:'',language:'eng',abstract:'Baroreflex sensitivity (BRS) was assessed in 18 children with ASD and 18 controls using the sequence method during 5-minute resting recordings. BRS was significantly reduced in the ASD group. Reduced BRS correlated with parent-reported anxiety scores. This pilot study supports further investigation of cardiovascular autonomic reflex function in ASD.'},
+  {id:'s8',rayyanId:'sample-8',title:'Resting heart rate variability across ASD severity levels',authors:'Anderson B, White H',year:2022,journal:'Dev Neuropsychol',pmid:'',language:'eng',abstract:'Resting-state HRV was examined across three severity levels of ASD (DSM-5 levels 1–3) in 90 participants. A dose-response relationship was observed, with greater ASD severity associated with lower RMSSD and higher LF/HF ratio. These findings suggest that autonomic dysregulation scales with ASD symptom burden and may reflect underlying neural circuit differences.'},
+  {id:'s9',rayyanId:'sample-9',title:'Skin conductance responses to emotional stimuli in autism',authors:'Thomas G, Jackson F',year:2020,journal:'Psychophysiology',pmid:'',language:'eng',abstract:'Sympathetic skin responses to emotional images were recorded in 25 adults with ASD and 25 neurotypical controls. Reduced SCR amplitude was observed for social but not non-social stimuli in the ASD group, suggesting domain-specific autonomic blunting rather than global sympathetic hypofunction. Results are interpreted within a predictive coding framework.'},
+  {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-let S={screen:'login',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},page:1,PAGE:30};
+let S={screen:'login',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25};
 let unsubs=[];
 
 const $=id=>document.getElementById(id);
@@ -191,7 +177,6 @@ async function saveDec(recId,rev,qid,val){
     if(val===null)delete updated[qid];else updated[qid]=val;
     const now=Date.now();
     await setDoc(doc(db,'decisions',rev+'_'+recId),{rev,recId,answers:updated,updatedAt:now});
-    // write scoring event for leaderboard
     await setDoc(doc(db,'score_events',rev+'_'+recId+'_'+qid),{rev,recId,qid,val,ts:now,weekTs:weekStart()});
     setSync('live');
   }catch(e){setSync('error');toast('Sync error: '+e.message,4000);}
@@ -248,11 +233,12 @@ function rReviewer(){
   const pageRecs=myRecs.slice((pg-1)*S.PAGE,pg*S.PAGE);
   return`<div>
   <div class="logo-bar"><div class="logo-mark">TAL</div>
-  <div style="flex:1"><div class="logo-title">ANS Scoping Review</div><div class="logo-text">Reviewer: <strong>${u}</strong> · ${done}/${myRecs.length} complete (${pct}%)</div></div>
+  <div style="flex:1"><div class="logo-title">ANS Scoping Review</div>
+  <div class="logo-text">Reviewer: <strong>${u}</strong> · ${done}/${myRecs.length} complete (${pct}%)</div></div>
   ${syncBar()}<button id="logout" class="btn-sm" style="margin-left:10px">Logout</button></div>
   <div style="background:#EAF3DE;border:1px solid #97C459;border-radius:7px;padding:8px 14px;margin-bottom:1rem;font-size:12px;color:#3B6D11">
     <strong>Decision logic:</strong> Yes = Exclude (stops cascade). No = Continue. Unclear = Continue (flagged if paired with Yes from co-reviewer).
-    <strong>Q2 note:</strong> Check the full text — abstract language in Rayyan may not match the full text language.
+    <strong>Q2:</strong> Check the full text — abstract language in Rayyan may not match full text language.
   </div>
   ${myRecs.length===0?`<div class="card" style="text-align:center;color:#888;padding:2.5rem">No records assigned yet. Contact admin.</div>`:''}
   ${pageRecs.map(rec=>rCard(rec,u)).join('')}
@@ -262,14 +248,23 @@ function rReviewer(){
 
 function rCard(rec,u){
   const ans=(S.decisions[u]||{})[rec.id]||{};
+  const abstractOpen=S.abstractOpen[rec.id];
+  const dxOpen=S.dx5[rec.id];
+
+  const abstractSection=rec.abstract?`
+    <button class="abstract-toggle" data-abs="${rec.id}">${abstractOpen?'▾ Hide abstract':'▸ Show abstract'}</button>
+    ${abstractOpen?`<div class="abstract-body">${rec.abstract}</div>`:''}
+  `:'';
+
   const qRows=QS.map((q,i)=>{
     const stopped=QS.slice(0,i).some(pq=>ans[pq.id]==='yes');
     const cur=ans[q.id]||null;
-    const dxOpen=S.dx5[rec.id];
-    const dxSection=q.hasDx?`<button class="dx-toggle" data-dx="${rec.id}">${dxOpen?'▾ Hide':'▸ See'} qualifying diagnoses</button>
+    const dxSection=q.hasDx?`
+      <button class="dx-toggle" data-dx="${rec.id}">${dxOpen?'▾ Hide':'▸ See'} qualifying diagnoses</button>
       ${dxOpen?`<div class="dx-panel"><div class="dx-title">Exclude only if population is exclusively one or more of these — with no ASD participants</div>
       <div class="dx-grid">${DX.map(d=>`<div class="dx-item">${d}</div>`).join('')}</div>
-      <div class="dx-note">If ASD participants are included alongside a dysautonomia group → answer <strong>No</strong>.</div></div>`:''}`:'' ;
+      <div class="dx-note">If ASD participants are included alongside a dysautonomia group → answer <strong>No</strong>.</div></div>`:''}
+    `:'';
     return`<div class="q-row${stopped?' q-disabled':''}">
       <span class="q-num">Q${i+1}</span>
       <div class="q-label-wrap"><div class="q-label">${q.text}</div>${dxSection}</div>
@@ -279,46 +274,50 @@ function rCard(rec,u){
         <button class="qb q-btn-unc${cur==='unclear'?' active':''} btn-sm" data-rec="${rec.id}" data-q="${q.id}" data-v="unclear">Unclear</button>
       </div></div>`;
   }).join('');
+
   const dec=getDec(rec.id,u);
   const decBar=dec&&dec.verdict==='exclude'?`<div class="decision-bar decision-exclude">⊘ Exclude — ${dec.trigger}</div>`:dec&&dec.verdict==='include'?`<div class="decision-bar decision-include">✓ Include — passed all 6 criteria</div>`:'';
   const pmidLink=rec.pmid?` <a href="https://pubmed.ncbi.nlm.nih.gov/${rec.pmid}/" target="_blank" style="font-size:11px;color:#185FA5;text-decoration:none">PMID:${rec.pmid} ↗</a>`:'';
   const langTag=rec.language&&rec.language!=='eng'?` <span style="font-size:10px;background:#FAEEDA;color:#854F0B;padding:1px 5px;border-radius:3px;font-weight:600">${rec.language.toUpperCase()}</span>`:'';
+
   return`<div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;gap:10px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:10px">
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;color:#888;margin-bottom:3px">${rec.rayyanId||rec.id} · ${rec.year} · <em>${rec.journal}</em>${pmidLink}${langTag}</div>
-        <div style="font-size:14px;font-weight:600;line-height:1.4">${rec.title}</div>
-        <div style="font-size:11px;color:#888;margin-top:2px">${rec.authors||''}</div>
+        <div style="font-size:11px;color:#888;margin-bottom:3px">${rec.rayyanId||rec.id} · ${rec.year||''} · <em>${rec.journal||''}</em>${pmidLink}${langTag}</div>
+        <div style="font-size:14px;font-weight:600;line-height:1.4;color:#1a1a1a">${rec.title||'Untitled'}</div>
+        <div style="font-size:12px;color:#666;margin-top:2px">${rec.authors||''}</div>
+        ${abstractSection}
       </div>
-      <span class="badge badge-${dec?dec.verdict==='exclude'?'exclude':dec.verdict==='include'?'include':'progress':'pending'}" style="flex-shrink:0">${dec?dec.verdict:'pending'}</span>
+      <span class="badge badge-${dec?dec.verdict==='exclude'?'exclude':dec.verdict==='include'?'include':'progress':'pending'}" style="flex-shrink:0;margin-top:2px">${dec?dec.verdict:'pending'}</span>
     </div>
-    ${qRows}${decBar}</div>`;
+    <div style="border-top:1px solid #f0efe8;margin-top:8px">
+    ${qRows}</div>
+    ${decBar}
+  </div>`;
 }
 
 function rPager(pg,total,count){
   return`<div class="pager">
     <button id="pgPrev" ${pg<=1?'disabled':''}>← Prev</button>
-    <span>Page ${pg} of ${total} · ${count} records</span>
+    <span>Page ${pg} of ${total} · ${count} records total</span>
     <button id="pgNext" ${pg>=total?'disabled':''}>Next →</button>
   </div>`;
 }
 
 function rAdmin(){
-  const tab=S.adminTab;
   const tabs=[{id:'assign',label:'Assign'},{id:'compile',label:'Compilation'},{id:'import',label:'CSV Import'},{id:'rayyan',label:'Rayyan Export'}];
-  const total=Object.keys(S.records).length;
   return`<div>
   <div class="logo-bar"><div class="logo-mark">TAL</div>
-  <div style="flex:1"><div class="logo-title">ANS Scoping Review — Admin</div><div class="logo-text">${total} records · Firebase live</div></div>
+  <div style="flex:1"><div class="logo-title">ANS Scoping Review — Admin</div>
+  <div class="logo-text">${Object.keys(S.records).length} records · Firebase live</div></div>
   ${syncBar()}<button id="logout" class="btn-sm" style="margin-left:10px">Logout</button></div>
-  <div class="nav">${tabs.map(t=>`<button class="admin-tab ${tab===t.id?'active':''}" data-tab="${t.id}">${t.label}</button>`).join('')}</div>
-  ${tab==='assign'?rAssign():tab==='compile'?rCompile():tab==='import'?rImport():rRayyan()}
+  <div class="nav">${tabs.map(t=>`<button class="admin-tab ${S.adminTab===t.id?'active':''}" data-tab="${t.id}">${t.label}</button>`).join('')}</div>
+  ${S.adminTab==='assign'?rAssign():S.adminTab==='compile'?rCompile():S.adminTab==='import'?rImport():rRayyan()}
   </div>`;
 }
 
 function rAssign(){
   const recs=Object.values(S.records);
-  const assignable=recs;
   let assigned=0,complete=0,conflict=0;
   recs.forEach(r=>{
     if(REVS.some(rv=>(S.assignments[r.id]||{})[rv]))assigned++;
@@ -326,7 +325,7 @@ function rAssign(){
     if(c==='conflict')conflict++;
     if(c==='exclude'||c==='include')complete++;
   });
-  const sorted=assignable.sort((a,b)=>String(a.rayyanId||a.id).localeCompare(String(b.rayyanId||b.id)));
+  const sorted=recs.sort((a,b)=>String(a.rayyanId||a.id).localeCompare(String(b.rayyanId||b.id)));
   const totalPages=Math.ceil(sorted.length/50)||1;
   const pg=Math.min(S.page,totalPages);
   const pageRecs=sorted.slice((pg-1)*50,pg*50);
@@ -359,9 +358,11 @@ function rAssign(){
       const bc=c==='conflict'?'badge-conflict':c==='exclude'?'badge-exclude':c==='include'?'badge-include':c==='unclear'?'badge-unclear':'badge-pending';
       return`<div class="assign-row">
         <span style="color:#888;font-size:11px">${(pg-1)*50+i+1}</span>
-        <div><div style="font-size:11px;line-height:1.3">${r.title.length>60?r.title.slice(0,57)+'…':r.title}</div>
-        ${r.pmid?`<div style="font-size:10px;color:#185FA5">PMID:${r.pmid}</div>`:''}
-        ${r.language&&r.language!=='eng'?`<span style="font-size:10px;background:#FAEEDA;color:#854F0B;padding:1px 4px;border-radius:3px">${r.language.toUpperCase()}</span>`:''}</div>
+        <div>
+          <div style="font-size:11px;line-height:1.3">${(r.title||'Untitled').length>62?(r.title||'Untitled').slice(0,59)+'…':(r.title||'Untitled')}</div>
+          ${r.pmid?`<div style="font-size:10px;color:#185FA5">PMID:${r.pmid}</div>`:''}
+          ${r.language&&r.language!=='eng'?`<span style="font-size:10px;background:#FAEEDA;color:#854F0B;padding:1px 4px;border-radius:3px">${r.language.toUpperCase()}</span>`:''}
+        </div>
         <div style="display:flex;gap:3px;flex-wrap:wrap">${REVS.map(rv=>`<span style="font-size:10px;padding:2px 4px;border-radius:4px;background:${(S.assignments[r.id]||{})[rv]?'#B5D4F4':'#f0efe8'};color:${(S.assignments[r.id]||{})[rv]?'#0C447C':'#888'}">${rv}</span>`).join('')}</div>
         <div>${asgn.length>0?`<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div><div style="font-size:10px;color:#888;margin-top:2px">${dn}/${asgn.length}</div>`:'<span style="font-size:10px;color:#aaa">–</span>'}</div>
         <span class="badge ${bc}" style="font-size:10px">${c||'pending'}</span>
@@ -408,7 +409,7 @@ function rCompile(){
       const revSum=asgn.map(rv=>{const d=getDec(r.id,rv);const col=!d?'#888':d.verdict==='exclude'?'#A32D2D':d.verdict==='include'?'#3B6D11':'#854F0B';return`<span style="font-size:11px;color:${col};display:block">${rv}: ${d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'pending'}</span>`;}).join('')||'<span style="font-size:11px;color:#aaa">unassigned</span>';
       return`<div class="compile-row">
         <span style="color:#888;font-size:11px">${r.rayyanId||r.id}</span>
-        <div><div style="font-size:12px;font-weight:500;line-height:1.4">${r.title}</div>
+        <div><div style="font-size:12px;font-weight:500;line-height:1.4">${r.title||'Untitled'}</div>
         <div style="font-size:11px;color:#888;margin-top:1px">${r.authors||''} (${r.year||''})${r.pmid?' · PMID:'+r.pmid:''}</div>
         ${c==='conflict'?`<div class="conflict-note">⚠ Conflict — adjudication required</div>`:''}</div>
         <div>${revSum}</div>
@@ -423,19 +424,26 @@ function rCompile(){
 function rImport(){
   return`<div><div class="card">
     <div class="section-header">Import from Rayyan CSV</div>
-    <p style="font-size:12px;color:#888;margin-bottom:12px;line-height:1.6">
-      Export from Rayyan and paste below. Reads: <code>key</code>, <code>title</code>, <code>authors</code>, <code>year</code>, <code>journal</code>, <code>pubmed_id</code>, <code>language</code>.
-      Non-English records are imported normally — Q2 requires reviewer confirmation of full text language.
-      A language tag will appear on non-English records as a reminder.<br>
-      <strong>Warning:</strong> Import clears all records, assignments, and decisions.
+    <p style="font-size:12px;color:#888;margin-bottom:16px;line-height:1.7">
+      Export your articles from Rayyan as CSV, then upload the file below. The app reads these columns directly:
+      <code>key</code> (Rayyan ID), <code>title</code>, <code>authors</code>, <code>year</code>, <code>journal</code>,
+      <code>pubmed_id</code>, <code>language</code>, <code>abstract</code>.<br>
+      Non-English records import normally — reviewers see a language tag and must confirm full text language via Q2.<br>
+      <strong style="color:#A32D2D">Warning: import clears all existing records, assignments, and decisions.</strong>
     </p>
-    <textarea id="csvInput" placeholder="Paste Rayyan CSV here…" style="height:200px"></textarea>
-    <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
-      <button id="parseCSV" class="btn-primary btn-sm">Parse &amp; Preview</button>
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="csvFile" accept=".csv"/>
+      <div class="upload-zone-label">
+        <div style="font-size:28px;margin-bottom:8px">📄</div>
+        <div><strong onclick="document.getElementById('csvFile').click()">Choose CSV file</strong> or drag and drop here</div>
+        <div style="font-size:11px;margin-top:4px">Rayyan export .csv · typically 5,000–6,000 records</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
       <button id="resetSample" class="btn-danger btn-sm">Reset to Sample Data</button>
       <span id="csvMsg" style="font-size:12px;color:#888"></span>
     </div>
-    <div id="csvPreview" style="margin-top:12px"></div>
+    <div id="csvPreview"></div>
   </div></div>`;
 }
 
@@ -447,8 +455,9 @@ function rRayyan(){
   return`<div><div class="card">
     <div class="section-header">Rayyan Re-import Export</div>
     <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6">
-      CSV for Rayyan bulk status update. Included → <strong>Included</strong>. Excluded → <strong>Excluded</strong> with criterion (Q1–Q6). Conflicts and pending are not exported — resolve conflicts first.<br>
-      Rayyan matches by <strong>title</strong>. PMIDs and Rayyan IDs included as reference. Bulk CSV import requires a <strong>Rayyan paid plan</strong>.
+      CSV for Rayyan bulk status update. Included → <strong>Included</strong>. Excluded → <strong>Excluded</strong> with criterion (Q1–Q6).
+      Conflicts and pending records are not exported — resolve conflicts first.<br>
+      Rayyan matches by <strong>title</strong>. PMIDs and Rayyan IDs included. Bulk CSV import requires a <strong>Rayyan paid plan</strong>.
     </p>
     <div class="stat-row">
       <div class="stat-card" style="background:#EAF3DE"><div class="stat-num" style="color:#3B6D11">${inc.length}</div><div class="stat-lbl">Will mark Included</div></div>
@@ -463,6 +472,7 @@ function rRayyan(){
   </div></div>`;
 }
 
+// ── CSV PARSER ────────────────────────────────────────────────────────────────
 function parseCSVLine(line){
   const res=[];let cur='';let inQ=false;
   for(let i=0;i<line.length;i++){
@@ -477,22 +487,42 @@ function parseRayyan(raw){
   if(lines.length<2)return null;
   const hdr=parseCSVLine(lines[0]).map(h=>h.toLowerCase().trim());
   const ci=n=>hdr.indexOf(n);
-  const get=(cols,n)=>cols[ci(n)]?.trim()||'';
-  return lines.slice(1).map((line,i)=>{
-    const cols=parseCSVLine(line);
-    if(cols.length<3)return null;
-    const lang=get(cols,'language')||'';
-    return{
-      id:get(cols,'key')||'rec-'+(i+1),
+  const get=(cols,n)=>{const i=ci(n);return i>=0?(cols[i]?.trim()||''):'';};
+  const results=[];
+  for(let i=1;i<lines.length;i++){
+    const cols=parseCSVLine(lines[i]);
+    if(cols.length<3)continue;
+    results.push({
+      id:get(cols,'key')||'rec-'+i,
       rayyanId:get(cols,'key')||'',
       title:get(cols,'title')||'Untitled',
       authors:get(cols,'authors')||'',
       year:parseInt(get(cols,'year'))||0,
       journal:get(cols,'journal')||'',
       pmid:get(cols,'pubmed_id')||'',
-      language:lang,
-    };
-  }).filter(Boolean);
+      language:get(cols,'language')||'',
+      abstract:get(cols,'abstract')||'',
+    });
+  }
+  return results;
+}
+
+async function doImport(parsed){
+  const$msg=$('csvMsg');
+  if($msg)$msg.textContent='Importing — please wait…';
+  const CHUNK=400;
+  const[rS,dS,aS]=await Promise.all([getDocs(collection(db,'records')),getDocs(collection(db,'decisions')),getDocs(collection(db,'assignments'))]);
+  const allDel=[...rS.docs,...dS.docs,...aS.docs];
+  for(let i=0;i<allDel.length;i+=CHUNK){const b=writeBatch(db);allDel.slice(i,i+CHUNK).forEach(d=>b.delete(d.ref));await b.commit();}
+  for(let i=0;i<parsed.length;i+=CHUNK){
+    const b=writeBatch(db);
+    parsed.slice(i,i+CHUNK).forEach(r=>b.set(doc(db,'records',r.id),r));
+    await b.commit();
+    if($msg)$msg.textContent=`Importing… ${Math.min(i+CHUNK,parsed.length)}/${parsed.length}`;
+  }
+  if($msg)$msg.textContent=`${parsed.length} records imported successfully.`;
+  $('csvPreview').innerHTML='';
+  toast(`${parsed.length} records imported`);
 }
 
 function dlCSV(rows,name){
@@ -501,6 +531,7 @@ function dlCSV(rows,name){
   a.download=name;a.click();
 }
 
+// ── EVENTS ────────────────────────────────────────────────────────────────────
 function attachEvents(){
   document.querySelectorAll('.reviewer-btn').forEach(b=>b.addEventListener('click',()=>{S.user=b.dataset.r;S.screen='reviewer';S.page=1;render();}));
   $('adminLogin')?.addEventListener('click',()=>{
@@ -508,9 +539,19 @@ function attachEvents(){
     else $('adminErr').style.display='block';
   });
   $('adminpw')?.addEventListener('keydown',e=>{if(e.key==='Enter')$('adminLogin').click();});
-  $('logout')?.addEventListener('click',()=>{S.screen='login';S.user=null;S.isAdmin=false;render();});
+  $('logout')?.addEventListener('click',()=>{S.screen='login';S.user=null;render();});
   document.querySelectorAll('.admin-tab').forEach(b=>b.addEventListener('click',()=>{S.adminTab=b.dataset.tab;S.page=1;render();}));
-  document.querySelectorAll('[data-dx]').forEach(b=>b.addEventListener('click',e=>{e.preventDefault();const id=b.dataset.dx;S.dx5[id]=!S.dx5[id];render();}));
+
+  // abstract toggle
+  document.querySelectorAll('[data-abs]').forEach(b=>b.addEventListener('click',e=>{
+    e.preventDefault();const id=b.dataset.abs;S.abstractOpen[id]=!S.abstractOpen[id];render();
+  }));
+  // dx toggle
+  document.querySelectorAll('[data-dx]').forEach(b=>b.addEventListener('click',e=>{
+    e.preventDefault();const id=b.dataset.dx;S.dx5[id]=!S.dx5[id];render();
+  }));
+
+  // screening buttons
   document.querySelectorAll('.qb').forEach(b=>b.addEventListener('click',async()=>{
     const recId=b.dataset.rec,qid=b.dataset.q,v=b.dataset.v;
     const cur=((S.decisions[S.user]||{})[recId]||{})[qid];
@@ -523,6 +564,8 @@ function attachEvents(){
     await saveDec(recId,S.user,qid,nv);
     if(nv==='yes'){const qi=QS.findIndex(q=>q.id===qid);for(const nq of QS.slice(qi+1))await saveDec(recId,S.user,nq.id,null);}
   }));
+
+  // assign
   $('bulkAssign')?.addEventListener('click',async()=>{
     const from=parseInt($('rangeFrom').value),to=parseInt($('rangeTo').value),rv=$('rangeRev').value;
     const sorted=Object.values(S.records).sort((a,b)=>String(a.rayyanId||a.id).localeCompare(String(b.rayyanId||b.id)));
@@ -537,49 +580,43 @@ function attachEvents(){
     for(const r of slice)await saveAssign(r.id,rv,false);
     toast(`Unassigned ${slice.length} records from ${rv}`);
   });
+
+  // filters
   $('filterRev')?.addEventListener('change',e=>{S.filterRev=e.target.value;S.page=1;render();});
   $('filterStat')?.addEventListener('change',e=>{S.filterStat=e.target.value;S.page=1;render();});
   $('pgPrev')?.addEventListener('click',()=>{if(S.page>1){S.page--;render();}});
   $('pgNext')?.addEventListener('click',()=>{S.page++;render();});
-  $('parseCSV')?.addEventListener('click',()=>{
-    const raw=$('csvInput').value.trim();
-    if(!raw){$('csvMsg').textContent='No content.';return;}
-    const parsed=parseRayyan(raw);
-    if(!parsed||!parsed.length){$('csvMsg').textContent='Parse failed.';return;}
-    const nonEng=parsed.filter(r=>r.language&&r.language!=='eng').length;
-    $('csvPreview').innerHTML=`<div style="background:#f5f4f0;border-radius:7px;padding:12px;font-size:12px">
-      <div style="font-weight:600;margin-bottom:4px">${parsed.length} records parsed</div>
-      <div style="color:#854F0B;margin-bottom:8px">${nonEng} non-English records — imported normally, language tag shown to reviewers, Q2 must be confirmed against full text</div>
-      ${parsed.slice(0,3).map(r=>`<div style="padding:5px 0;border-bottom:1px solid #e0dfd8"><strong>${r.rayyanId}</strong> ${r.title}<br><span style="color:#888">${r.authors} · ${r.year} · ${r.language||'?'}${r.pmid?' · PMID:'+r.pmid:''}</span></div>`).join('')}
-      <button id="confirmImport" class="btn-primary btn-sm" style="margin-top:10px">Confirm Import — replaces ${Object.keys(S.records).length} current records</button>
-    </div>`;
-    $('csvMsg').textContent='Preview ready.';
-    $('confirmImport').addEventListener('click',async()=>{
-      $('csvMsg').textContent='Importing…';
-      const [rS,dS,aS]=await Promise.all([getDocs(collection(db,'records')),getDocs(collection(db,'decisions')),getDocs(collection(db,'assignments'))]);
-      const CHUNK=400;
-      const allDel=[...rS.docs,...dS.docs,...aS.docs];
-      for(let i=0;i<allDel.length;i+=CHUNK){const b=writeBatch(db);allDel.slice(i,i+CHUNK).forEach(d=>b.delete(d.ref));await b.commit();}
-      for(let i=0;i<parsed.length;i+=CHUNK){const b=writeBatch(db);parsed.slice(i,i+CHUNK).forEach(r=>b.set(doc(db,'records',r.id),r));await b.commit();}
-      $('csvMsg').textContent=`${parsed.length} records imported.`;
-      $('csvPreview').innerHTML='';$('csvInput').value='';
-      toast(`${parsed.length} records imported`);
-    });
-  });
+
+  // file upload
+  const csvFile=$('csvFile');
+  const uploadZone=$('uploadZone');
+  if(csvFile){
+    csvFile.addEventListener('change',e=>{handleFile(e.target.files[0]);});
+  }
+  if(uploadZone){
+    uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.classList.add('drag');});
+    uploadZone.addEventListener('dragleave',()=>uploadZone.classList.remove('drag'));
+    uploadZone.addEventListener('drop',e=>{e.preventDefault();uploadZone.classList.remove('drag');handleFile(e.dataTransfer.files[0]);});
+    uploadZone.addEventListener('click',()=>csvFile&&csvFile.click());
+  }
+
+  // reset sample
   $('resetSample')?.addEventListener('click',async()=>{
-    if(!confirm('Reset to sample data? All records, assignments, and decisions will be cleared.'))return;
-    const [rS,dS,aS]=await Promise.all([getDocs(collection(db,'records')),getDocs(collection(db,'decisions')),getDocs(collection(db,'assignments'))]);
+    if(!confirm('Reset to 10 sample records? All records, assignments, and decisions will be cleared.'))return;
+    const[rS,dS,aS]=await Promise.all([getDocs(collection(db,'records')),getDocs(collection(db,'decisions')),getDocs(collection(db,'assignments'))]);
     const b=writeBatch(db);[...rS.docs,...dS.docs,...aS.docs].forEach(d=>b.delete(d.ref));SAMPLE.forEach(r=>b.set(doc(db,'records',r.id),r));await b.commit();
     toast('Reset to sample data');
   });
+
+  // exports
   $('exportRayyan')?.addEventListener('click',()=>{
     const recs=Object.values(S.records);
     const rows=[['rayyan_key','title','authors','year','journal','pubmed_id','decision','exclusion_criterion']];
-    recs.filter(r=>getConsolidated(r.id)==='include').forEach(r=>rows.push([r.rayyanId||r.id,'"'+r.title.replace(/"/g,'""')+'"','"'+(r.authors||'')+'"',r.year,r.journal,r.pmid||'','Included','']));
+    recs.filter(r=>getConsolidated(r.id)==='include').forEach(r=>rows.push([r.rayyanId||r.id,'"'+( r.title||'').replace(/"/g,'""')+'"','"'+(r.authors||'')+'"',r.year||'',r.journal||'',r.pmid||'','Included','']));
     recs.filter(r=>getConsolidated(r.id)==='exclude').forEach(r=>{
       const asgn=REVS.filter(rv=>(S.assignments[r.id]||{})[rv]);
       const reason=asgn.map(rv=>{const d=getDec(r.id,rv);return d&&d.trigger?d.trigger:'';}).filter(Boolean).join('; ');
-      rows.push([r.rayyanId||r.id,'"'+r.title.replace(/"/g,'""')+'"','"'+(r.authors||'')+'"',r.year,r.journal,r.pmid||'','Excluded',reason]);
+      rows.push([r.rayyanId||r.id,'"'+(r.title||'').replace(/"/g,'""')+'"','"'+(r.authors||'')+'"',r.year||'',r.journal||'',r.pmid||'','Excluded',reason]);
     });
     dlCSV(rows,'TAL_ANS_Rayyan_'+today()+'.csv');
   });
@@ -587,7 +624,7 @@ function attachEvents(){
     const recs=Object.values(S.records).sort((a,b)=>String(a.rayyanId||a.id).localeCompare(String(b.rayyanId||b.id)));
     const rows=[['rayyan_key','title','authors','year','journal','pmid','language',...REVS.map(r=>r+'_decision'),'consolidated']];
     recs.forEach(r=>{
-      const row=[r.rayyanId||r.id,'"'+r.title.replace(/"/g,'""')+'"','"'+(r.authors||'')+'"',r.year,r.journal,r.pmid||'',r.language||''];
+      const row=[r.rayyanId||r.id,'"'+(r.title||'').replace(/"/g,'""')+'"','"'+(r.authors||'')+'"',r.year||'',r.journal||'',r.pmid||'',r.language||''];
       REVS.forEach(rv=>{const d=getDec(r.id,rv);row.push(d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'');});
       row.push(getConsolidated(r.id)||'pending');
       rows.push(row);
@@ -596,7 +633,45 @@ function attachEvents(){
   });
 }
 
-(async()=>{try{await initSample();startListeners();}catch(e){$('app').innerHTML=`<div class="card" style="color:#A32D2D;text-align:center;padding:2rem;max-width:500px;margin:2rem auto"><strong>Firebase error</strong><br><span style="font-size:12px">${e.message}</span></div>`;}})();
+function handleFile(file){
+  if(!file)return;
+  const$msg=$('csvMsg');
+  if($msg)$msg.textContent=`Reading ${file.name}…`;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const raw=e.target.result;
+    const parsed=parseRayyan(raw);
+    if(!parsed||!parsed.length){if($msg)$msg.textContent='Could not parse CSV — check format.';return;}
+    const nonEng=parsed.filter(r=>r.language&&r.language!=='eng').length;
+    const noAbs=parsed.filter(r=>!r.abstract).length;
+    const prev=$('csvPreview');
+    if(prev)prev.innerHTML=`<div style="background:#f5f4f0;border-radius:7px;padding:14px;font-size:12px">
+      <div style="font-weight:600;font-size:13px;margin-bottom:6px">${parsed.length} records parsed from ${file.name}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">
+        <div style="background:#fff;border:1px solid #e0dfd8;border-radius:6px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:600">${parsed.length}</div><div style="font-size:10px;color:#888">Total records</div></div>
+        <div style="background:#fff;border:1px solid #e0dfd8;border-radius:6px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#854F0B">${nonEng}</div><div style="font-size:10px;color:#888">Non-English (language tag shown)</div></div>
+        <div style="background:#fff;border:1px solid #e0dfd8;border-radius:6px;padding:8px;text-align:center"><div style="font-size:18px;font-weight:600;color:#888">${noAbs}</div><div style="font-size:10px;color:#888">No abstract</div></div>
+      </div>
+      <div style="font-weight:500;margin-bottom:6px">First 3 records:</div>
+      ${parsed.slice(0,3).map(r=>`<div style="padding:6px 0;border-bottom:1px solid #e0dfd8">
+        <div style="font-weight:500">${r.title}</div>
+        <div style="color:#888;font-size:11px">${r.rayyanId} · ${r.authors} · ${r.year} · ${r.language||'?'}${r.pmid?' · PMID:'+r.pmid:''}</div>
+        ${r.abstract?`<div style="color:#666;font-size:11px;margin-top:2px">${r.abstract.slice(0,120)}…</div>`:''}
+      </div>`).join('')}
+      <button id="confirmImport" class="btn-primary btn-sm" style="margin-top:12px">Confirm Import — replaces ${Object.keys(S.records).length} current records</button>
+      <button id="cancelImport" class="btn-sm" style="margin-left:8px;margin-top:12px">Cancel</button>
+    </div>`;
+    if($msg)$msg.textContent='Preview ready — confirm to import.';
+    $('confirmImport')?.addEventListener('click',()=>doImport(parsed));
+    $('cancelImport')?.addEventListener('click',()=>{if(prev)prev.innerHTML='';if($msg)$msg.textContent='';});
+  };
+  reader.readAsText(file);
+}
+
+(async()=>{
+  try{await initSample();startListeners();}
+  catch(e){$('app').innerHTML=`<div class="card" style="color:#A32D2D;text-align:center;padding:2rem;max-width:500px;margin:2rem auto"><strong>Firebase connection error</strong><br><span style="font-size:12px;margin-top:8px;display:block">${e.message}</span></div>`;}
+})();
 </script>
 </body>
 </html>
