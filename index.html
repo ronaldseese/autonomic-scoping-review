@@ -97,11 +97,11 @@ button:disabled{opacity:0.4;cursor:default;pointer-events:none}
 .pager span{font-size:12px;color:#888}
 code{font-family:'SF Mono',Monaco,monospace;font-size:11px;background:#f5f4f0;padding:1px 5px;border-radius:3px}
 /* File upload zone */
-.upload-zone{border:2px dashed #d0cfc8;border-radius:10px;padding:2rem;text-align:center;cursor:pointer;transition:all 0.2s;background:#fafaf8;margin-bottom:12px}
-.upload-zone:hover,.upload-zone.drag{border-color:#185FA5;background:#f0f6ff}
-.upload-zone input[type=file]{display:none}
+.upload-zone{border:2px dashed #d0cfc8;border-radius:10px;padding:1.5rem;text-align:center;transition:all 0.2s;background:#fafaf8;margin-bottom:12px}
+.upload-zone.drag{border-color:#185FA5;background:#f0f6ff}
 .upload-zone-label{font-size:13px;color:#888;line-height:1.6}
-.upload-zone-label strong{color:#185FA5;cursor:pointer}
+.file-input-wrap{margin-top:12px}
+.file-input-wrap input[type=file]{font-size:13px;color:#185FA5;background:#fff;border:1px solid #d0cfc8;border-radius:6px;padding:6px 10px;cursor:pointer;width:auto}
 </style>
 </head>
 <body>
@@ -432,11 +432,13 @@ function rImport(){
       <strong style="color:#A32D2D">Warning: import clears all existing records, assignments, and decisions.</strong>
     </p>
     <div class="upload-zone" id="uploadZone">
-      <input type="file" id="csvFile" accept=".csv"/>
       <div class="upload-zone-label">
         <div style="font-size:28px;margin-bottom:8px">📄</div>
-        <div><strong onclick="document.getElementById('csvFile').click()">Choose CSV file</strong> or drag and drop here</div>
+        <div>Drag and drop your CSV here, or use the button below</div>
         <div style="font-size:11px;margin-top:4px">Rayyan export .csv · typically 5,000–6,000 records</div>
+      </div>
+      <div class="file-input-wrap">
+        <input type="file" id="csvFile" accept=".csv"/>
       </div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
@@ -591,13 +593,19 @@ function attachEvents(){
   const csvFile=$('csvFile');
   const uploadZone=$('uploadZone');
   if(csvFile){
-    csvFile.addEventListener('change',e=>{handleFile(e.target.files[0]);});
+    csvFile.addEventListener('change',e=>{
+      if(e.target.files[0])handleFile(e.target.files[0]);
+    });
   }
   if(uploadZone){
-    uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.classList.add('drag');});
-    uploadZone.addEventListener('dragleave',()=>uploadZone.classList.remove('drag'));
-    uploadZone.addEventListener('drop',e=>{e.preventDefault();uploadZone.classList.remove('drag');handleFile(e.dataTransfer.files[0]);});
-    uploadZone.addEventListener('click',()=>csvFile&&csvFile.click());
+    uploadZone.addEventListener('dragover',e=>{e.preventDefault();e.stopPropagation();uploadZone.classList.add('drag');});
+    uploadZone.addEventListener('dragleave',e=>{e.stopPropagation();uploadZone.classList.remove('drag');});
+    uploadZone.addEventListener('drop',e=>{
+      e.preventDefault();e.stopPropagation();
+      uploadZone.classList.remove('drag');
+      const file=e.dataTransfer.files[0];
+      if(file)handleFile(file);
+    });
   }
 
   // reset sample
