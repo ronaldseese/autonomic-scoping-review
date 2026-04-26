@@ -102,6 +102,13 @@ code{font-family:'SF Mono',Monaco,monospace;font-size:11px;background:#f5f4f0;pa
 .upload-zone-label{font-size:13px;color:#888;line-height:1.6}
 .file-input-wrap{margin-top:12px}
 .file-input-wrap input[type=file]{font-size:13px;color:#185FA5;background:#fff;border:1px solid #d0cfc8;border-radius:6px;padding:6px 10px;cursor:pointer;width:auto}
+.pin-dot{width:44px;height:44px;border-radius:8px;border:2px solid #d0cfc8;background:#fff;transition:border-color 0.15s,background 0.15s;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#185FA5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.pin-dot.filled{border-color:#185FA5;background:#E6F1FB}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:240px;margin:0 auto}
+.pin-key{font-size:20px;font-weight:600;padding:14px;border-radius:8px;border:1px solid #e0dfd8;background:#fff;color:#1a1a1a;cursor:pointer;transition:all 0.1s}
+.pin-key:hover{background:#f0efe8}
+.pin-key:active{transform:scale(0.94);background:#e0dfd8}
+.pin-key[data-k=""]:disabled,.pin-key[data-k=""]{opacity:0;pointer-events:none}
 </style>
 </head>
 <body>
@@ -141,7 +148,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v1.8 · 2026-04-26';
+const VERSION='v1.9 · 2026-04-26';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
 let unsubs=[];
 
@@ -254,7 +261,7 @@ function rPinEnter(){
       <div style="font-size:28px;font-weight:700;color:#185FA5">${S.user}</div>
       <div style="font-size:13px;color:#888;margin-top:4px">Enter your 6-digit PIN</div>
     </div>
-    <div id="pinDots" style="display:flex;justify-content:center;gap:10px;margin-bottom:1.5rem">
+    <div id="pinDots" style="display:flex;justify-content:center;gap:8px;margin-bottom:1.5rem">
       ${[0,1,2,3,4,5].map(i=>`<div class="pin-dot" id="pd${i}"></div>`).join('')}
     </div>
     <div class="pin-pad">
@@ -275,7 +282,7 @@ function rPinSet(){
       <div style="font-size:13px;color:#888;margin-top:4px">${step==='set'?'Create a 6-digit PIN':'Confirm your PIN'}</div>
       <div style="font-size:11px;color:#aaa;margin-top:3px">${step==='set'?'You will use this every time you log in.':'Enter the same PIN again to confirm.'}</div>
     </div>
-    <div id="pinDots" style="display:flex;justify-content:center;gap:10px;margin-bottom:1.5rem">
+    <div id="pinDots" style="display:flex;justify-content:center;gap:8px;margin-bottom:1.5rem">
       ${[0,1,2,3,4,5].map(i=>`<div class="pin-dot" id="pd${i}"></div>`).join('')}
     </div>
     <div class="pin-pad">
@@ -649,8 +656,24 @@ function attachEvents(){
       if((S.pinEntry||'').length>=6)return;
       S.pinEntry=(S.pinEntry||'')+k;
     }
-    // update dots
-    for(let i=0;i<6;i++){const d=$('pd'+i);if(d)d.className='pin-dot'+((S.pinEntry||'').length>i?' filled':'');}
+    // update dots — flash digit then mask to *
+    const entry=S.pinEntry||'';
+    for(let i=0;i<6;i++){
+      const d=$('pd'+i);
+      if(!d)continue;
+      if(i<entry.length-1){
+        // already masked
+        d.className='pin-dot filled masked';d.textContent='•';
+      } else if(i===entry.length-1&&k!=='⌫'){
+        // just entered — show digit briefly then mask
+        d.className='pin-dot filled';d.textContent=entry[i];
+        clearTimeout(d._mt);d._mt=setTimeout(()=>{d.className='pin-dot filled masked';d.textContent='•';},320);
+      } else if(i<entry.length){
+        d.className='pin-dot filled masked';d.textContent='•';
+      } else {
+        d.className='pin-dot';d.textContent='';
+      }
+    }
     if((S.pinEntry||'').length===6){
       setTimeout(()=>{
         if(S.pinScreen==='enter'){
