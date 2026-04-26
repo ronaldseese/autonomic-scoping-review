@@ -127,7 +127,7 @@ const QS=[
   {id:'q6',text:'Computational/modeling study only (no empirical ANS data collected)?'}
 ];
 const REVS=['AF','JH','LH','CS','RS'];
-const ADMIN_PW='TAL2026';
+const ADMIN_PW='marmoset';
 const SAMPLE=[
   {id:'s1',rayyanId:'sample-1',title:'Autonomic dysfunction in children with autism spectrum disorder',authors:'Smith J, Doe A',year:2022,journal:'J Autism Dev Disord',pmid:'',language:'eng',abstract:'Children with autism spectrum disorder (ASD) frequently exhibit signs of autonomic nervous system dysfunction, including altered heart rate variability, electrodermal activity, and thermoregulation. This study examined autonomic profiles in 42 children with ASD aged 4–12 years compared to 40 typically developing controls using ambulatory monitoring. Results indicated significantly reduced vagal tone and elevated sympathetic reactivity in the ASD group. Findings support the autonomic imbalance hypothesis of ASD and suggest potential biomarker utility for clinical stratification.'},
   {id:'s2',rayyanId:'sample-2',title:'Heart rate variability and sensory processing in ASD toddlers',authors:'Patel R, Kim S',year:2021,journal:'Autism Research',pmid:'',language:'eng',abstract:'Sensory processing differences are a hallmark feature of ASD. This study investigated the relationship between HRV and sensory reactivity in 28 toddlers with ASD (mean age 22 months). Respiratory sinus arrhythmia was measured during standardized sensory tasks. Lower RSA was associated with greater sensory hypersensitivity. Implications for early autonomic biomarkers of ASD are discussed.'},
@@ -141,8 +141,8 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v1.6 · 2026-04-26';
-let S={screen:'login',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
+const VERSION='v1.7 · 2026-04-26';
+let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
 let unsubs=[];
 
 const $=id=>document.getElementById(id);
@@ -191,6 +191,14 @@ async function saveAssign(recId,rev,val){
   }catch(e){setSync('error');toast('Sync error: '+e.message,4000);}
 }
 
+async function savePin(rev,pin){
+  try{await setDoc(doc(db,'pins',rev),{rev,pin});}
+  catch(e){toast('PIN save error: '+e.message,4000);}
+}
+async function resetPin(rev){
+  try{await deleteDoc(doc(db,'pins',rev));toast(rev+' PIN reset — they will be prompted to set a new one.');}
+  catch(e){toast('Reset error: '+e.message,4000);}
+}
 async function initSample(){
   const snap=await getDocs(collection(db,'records'));
   if(snap.empty){const b=writeBatch(db);SAMPLE.forEach(r=>b.set(doc(db,'records',r.id),r));await b.commit();}
@@ -200,6 +208,7 @@ function startListeners(){
   unsubs.push(onSnapshot(collection(db,'records'),snap=>{S.records={};snap.forEach(d=>{S.records[d.id]=d.data();});setSync('live');safeRender();},()=>setSync('error')));
   unsubs.push(onSnapshot(collection(db,'decisions'),snap=>{S.decisions={};snap.forEach(d=>{const x=d.data();if(!S.decisions[x.rev])S.decisions[x.rev]={};S.decisions[x.rev][x.recId]=x.answers||{};});safeRender();}));
   unsubs.push(onSnapshot(collection(db,'assignments'),snap=>{S.assignments={};snap.forEach(d=>{const x=d.data();if(!S.assignments[x.recId])S.assignments[x.recId]={};S.assignments[x.recId][x.rev]=x.assigned;});safeRender();}));
+  unsubs.push(onSnapshot(collection(db,'pins'),snap=>{S.pins={};snap.forEach(d=>{const x=d.data();S.pins[x.rev]=x.pin;});safeRender();},()=>{}));
 }
 
 function safeRender(){
@@ -209,7 +218,11 @@ function safeRender(){
 }
 function render(){
   const app=$('app');
-  if(S.screen==='login')app.innerHTML=rLogin();
+  if(S.screen==='login'){
+    if(S.pinScreen==='select')app.innerHTML=rLogin();
+    else if(S.pinScreen==='enter')app.innerHTML=rPinEnter();
+    else if(S.pinScreen==='set')app.innerHTML=rPinSet();
+  }
   else if(S.screen==='reviewer')app.innerHTML=rReviewer();
   else if(S.screen==='admin')app.innerHTML=rAdmin();
   attachEvents();
@@ -219,16 +232,58 @@ function render(){
 
 function syncBar(){return`<div class="sync-status"><span style="font-size:10px;color:#bbb;margin-right:6px">${VERSION}</span><span class="sync-dot ${S.syncStatus}" id="syncDot"></span><span id="syncLbl">${S.syncStatus==='live'?'Live':S.syncStatus==='syncing'?'Syncing…':'Offline'}</span></div>`;}
 
+function rLoginHeader(){
+  return`<div class="logo-bar"><div class="logo-mark">TAL</div><div><div class="logo-title">ANS Scoping Review</div><div class="logo-text">Translational Autism Laboratory · Screening Tool</div></div></div>`;
+}
 function rLogin(){
   return`<div style="max-width:400px;margin:2rem auto">
-  <div class="logo-bar"><div class="logo-mark">TAL</div><div><div class="logo-title">ANS Scoping Review</div><div class="logo-text">Translational Autism Laboratory · Screening Tool</div></div></div>
-  <div class="card"><div class="section-header">Reviewer Login</div>
+  ${rLoginHeader()}
+  <div class="card"><div class="section-header">Select Reviewer</div>
   <div class="reviewer-grid">${REVS.map(r=>`<button class="reviewer-btn" data-r="${r}">${r}</button>`).join('')}</div></div>
   <div class="card"><div class="section-header">Admin Access</div>
   <div style="display:flex;gap:8px"><input type="password" id="adminpw" placeholder="Admin password" style="flex:1"/><button id="adminLogin" class="btn-primary btn-sm">Login</button></div>
   <div id="adminErr" style="color:#A32D2D;font-size:11px;margin-top:6px;display:none">Incorrect password.</div></div>
   <div style="text-align:center;margin-top:8px"><a href="leaderboard.html" style="font-size:12px;color:#185FA5">📊 View Leaderboard</a></div>
   </div>`;
+}
+function rPinEnter(){
+  return`<div style="max-width:360px;margin:2rem auto">
+  ${rLoginHeader()}
+  <div class="card">
+    <div style="text-align:center;margin-bottom:1rem">
+      <div style="font-size:28px;font-weight:700;color:#185FA5">${S.user}</div>
+      <div style="font-size:13px;color:#888;margin-top:4px">Enter your 6-digit PIN</div>
+    </div>
+    <div id="pinDots" style="display:flex;justify-content:center;gap:10px;margin-bottom:1.5rem">
+      ${[0,1,2,3,4,5].map(i=>`<div class="pin-dot" id="pd${i}"></div>`).join('')}
+    </div>
+    <div class="pin-pad">
+      ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>`<button class="pin-key" data-k="${k}">${k}</button>`).join('')}
+    </div>
+    <div id="pinErr" style="color:#A32D2D;font-size:12px;text-align:center;margin-top:10px;min-height:18px"></div>
+    <div style="text-align:center;margin-top:12px;font-size:11px;color:#aaa">Forgot your PIN? Contact RS to reset.</div>
+    <button id="pinBack" style="display:block;margin:12px auto 0;font-size:12px;color:#888;background:none;border:none;cursor:pointer;text-decoration:underline">← Back</button>
+  </div></div>`;
+}
+function rPinSet(){
+  const step=S.pinSetStep||'set';
+  return`<div style="max-width:360px;margin:2rem auto">
+  ${rLoginHeader()}
+  <div class="card">
+    <div style="text-align:center;margin-bottom:1rem">
+      <div style="font-size:28px;font-weight:700;color:#185FA5">${S.user}</div>
+      <div style="font-size:13px;color:#888;margin-top:4px">${step==='set'?'Create a 6-digit PIN':'Confirm your PIN'}</div>
+      <div style="font-size:11px;color:#aaa;margin-top:3px">${step==='set'?'You will use this every time you log in.':'Enter the same PIN again to confirm.'}</div>
+    </div>
+    <div id="pinDots" style="display:flex;justify-content:center;gap:10px;margin-bottom:1.5rem">
+      ${[0,1,2,3,4,5].map(i=>`<div class="pin-dot" id="pd${i}"></div>`).join('')}
+    </div>
+    <div class="pin-pad">
+      ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>`<button class="pin-key" data-k="${k}">${k}</button>`).join('')}
+    </div>
+    <div id="pinErr" style="color:#A32D2D;font-size:12px;text-align:center;margin-top:10px;min-height:18px"></div>
+    <button id="pinBack" style="display:block;margin:12px auto 0;font-size:12px;color:#888;background:none;border:none;cursor:pointer;text-decoration:underline">← Back</button>
+  </div></div>`;
 }
 
 function rReviewer(){
@@ -313,14 +368,14 @@ function rPager(pg,total,count){
 }
 
 function rAdmin(){
-  const tabs=[{id:'assign',label:'Assign'},{id:'compile',label:'Compilation'},{id:'import',label:'CSV Import'},{id:'rayyan',label:'Rayyan Export'}];
+  const tabs=[{id:'assign',label:'Assign'},{id:'compile',label:'Compilation'},{id:'import',label:'CSV Import'},{id:'rayyan',label:'Rayyan Export'},{id:'pins',label:'Manage PINs'}];
   return`<div>
   <div class="logo-bar"><div class="logo-mark">TAL</div>
   <div style="flex:1"><div class="logo-title">ANS Scoping Review — Admin</div>
   <div class="logo-text">${Object.keys(S.records).length} records · Firebase live</div></div>
   ${syncBar()}<button id="logout" class="btn-sm" style="margin-left:10px">Logout</button></div>
   <div class="nav">${tabs.map(t=>`<button class="admin-tab ${S.adminTab===t.id?'active':''}" data-tab="${t.id}">${t.label}</button>`).join('')}</div>
-  ${S.adminTab==='assign'?rAssign():S.adminTab==='compile'?rCompile():S.adminTab==='import'?rImport():rRayyan()}
+  ${S.adminTab==='assign'?rAssign():S.adminTab==='compile'?rCompile():S.adminTab==='import'?rImport():S.adminTab==='rayyan'?rRayyan():rPins()}
   </div>`;
 }
 
@@ -502,6 +557,21 @@ function rRayyan(){
   </div></div>`;
 }
 
+function rPins(){
+  return`<div><div class="card">
+    <div class="section-header">Reviewer PINs</div>
+    <p style="font-size:12px;color:#888;margin-bottom:16px;line-height:1.6">
+      Each reviewer sets a 6-digit PIN on first login. Use Reset to clear a reviewer's PIN — they will be prompted to create a new one on their next login.
+    </p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${REVS.map(r=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:#fafaf8;border:1px solid #e0dfd8;border-radius:8px">
+        <div style="font-size:16px;font-weight:700;color:#185FA5;min-width:36px">${r}</div>
+        <div style="flex:1;font-size:13px;color:${S.pins[r]?'#3B6D11':'#888'}">${S.pins[r]?'PIN set':'No PIN — will be prompted on first login'}</div>
+        ${S.pins[r]?`<button class="btn-danger btn-sm pin-reset" data-rev="${r}">Reset PIN</button>`:'<span style="font-size:11px;color:#aaa">–</span>'}
+      </div>`).join('')}
+    </div>
+  </div></div>`;
+}
 // ── CSV PARSER ────────────────────────────────────────────────────────────────
 function parseCSVLine(line){
   const res=[];let cur='';let inQ=false;
@@ -562,7 +632,41 @@ function dlCSV(rows,name){
 
 // ── EVENTS ────────────────────────────────────────────────────────────────────
 function attachEvents(){
-  document.querySelectorAll('.reviewer-btn').forEach(b=>b.addEventListener('click',()=>{S.user=b.dataset.r;S.screen='reviewer';S.page=1;render();}));
+  document.querySelectorAll('.reviewer-btn').forEach(b=>b.addEventListener('click',()=>{
+    S.user=b.dataset.r;
+    if(S.pins[S.user]){S.pinScreen='enter';S.pinEntry='';}
+    else{S.pinScreen='set';S.pinSetStep='set';S.pinEntry='';S.pinSetFirst='';}
+    render();
+  }));
+  // PIN pad
+  document.querySelectorAll('.pin-key').forEach(b=>b.addEventListener('click',()=>{
+    const k=b.dataset.k;
+    if(k==='')return;
+    const err=$('pinErr');
+    if(k==='⌫'){
+      S.pinEntry=(S.pinEntry||'').slice(0,-1);
+    } else {
+      if((S.pinEntry||'').length>=6)return;
+      S.pinEntry=(S.pinEntry||'')+k;
+    }
+    // update dots
+    for(let i=0;i<6;i++){const d=$('pd'+i);if(d)d.className='pin-dot'+((S.pinEntry||'').length>i?' filled':'');}
+    if((S.pinEntry||'').length===6){
+      setTimeout(()=>{
+        if(S.pinScreen==='enter'){
+          if(S.pinEntry===S.pins[S.user]){S.screen='reviewer';S.pinScreen='select';S.pinEntry='';S.page=1;render();}
+          else{S.pinEntry='';for(let i=0;i<6;i++){const d=$('pd'+i);if(d)d.className='pin-dot';}if(err)err.textContent='Incorrect PIN. Try again.';}
+        } else if(S.pinScreen==='set'){
+          if(S.pinSetStep==='set'){S.pinSetFirst=S.pinEntry;S.pinEntry='';S.pinSetStep='confirm';render();}
+          else{
+            if(S.pinEntry===S.pinSetFirst){savePin(S.user,S.pinEntry).then(()=>{S.screen='reviewer';S.pinScreen='select';S.pinEntry='';S.pinSetFirst='';S.page=1;render();});}
+            else{S.pinEntry='';S.pinSetStep='set';S.pinSetFirst='';for(let i=0;i<6;i++){const d=$('pd'+i);if(d)d.className='pin-dot';}if(err)err.textContent='PINs did not match. Start over.';}
+          }
+        }
+      },120);
+    }
+  }));
+  $('pinBack')?.addEventListener('click',()=>{S.pinScreen='select';S.user=null;S.pinEntry='';S.pinSetFirst='';render();});
   $('adminLogin')?.addEventListener('click',()=>{
     if($('adminpw').value===ADMIN_PW){S.isAdmin=true;S.screen='admin';S.page=1;render();}
     else $('adminErr').style.display='block';
@@ -612,6 +716,10 @@ function attachEvents(){
 
   // filters
 
+  document.querySelectorAll('.pin-reset').forEach(b=>b.addEventListener('click',()=>{
+    const rev=b.dataset.rev;
+    if(confirm('Reset PIN for '+rev+'? They will need to set a new one on next login.'))resetPin(rev);
+  }));
   $('filterRev')?.addEventListener('change',e=>{S.filterRev=e.target.value;S.page=1;render();});
   $('filterStat')?.addEventListener('change',e=>{S.filterStat=e.target.value;S.page=1;render();});
   $('pgPrev')?.addEventListener('click',()=>{if(S.page>1){S.page--;render();}});
