@@ -208,6 +208,11 @@ function render(){
   else if(S.screen==='reviewer')app.innerHTML=rReviewer();
   else if(S.screen==='admin')app.innerHTML=rAdmin();
   attachEvents();
+  // confirm/cancel must bind after DOM is painted
+  setTimeout(()=>{
+    $('confirmImport')?.addEventListener('click',()=>{if(S.csvParsed)doImport(S.csvParsed);});
+    $('cancelImport')?.addEventListener('click',()=>{S.csvParsed=null;S.csvFileName='';render();});
+  },0);
 }
 
 function syncBar(){return`<div class="sync-status"><span style="font-size:10px;color:#bbb;margin-right:6px">${VERSION}</span><span class="sync-dot ${S.syncStatus}" id="syncDot"></span><span id="syncLbl">${S.syncStatus==='live'?'Live':S.syncStatus==='syncing'?'Syncing…':'Offline'}</span></div>`;}
@@ -604,8 +609,7 @@ function attachEvents(){
   });
 
   // filters
-  $('confirmImport')?.addEventListener('click',()=>{if(S.csvParsed)doImport(S.csvParsed);});
-  $('cancelImport')?.addEventListener('click',()=>{S.csvParsed=null;S.csvFileName='';render();});
+
   $('filterRev')?.addEventListener('change',e=>{S.filterRev=e.target.value;S.page=1;render();});
   $('filterStat')?.addEventListener('change',e=>{S.filterStat=e.target.value;S.page=1;render();});
   $('pgPrev')?.addEventListener('click',()=>{if(S.page>1){S.page--;render();}});
