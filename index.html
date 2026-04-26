@@ -148,7 +148,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v1.9 · 2026-04-26';
+const VERSION='v2.0 · 2026-04-26';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
 let unsubs=[];
 
@@ -645,8 +645,13 @@ function attachEvents(){
     else{S.pinScreen='set';S.pinSetStep='set';S.pinEntry='';S.pinSetFirst='';}
     render();
   }));
-  // PIN pad
-  document.querySelectorAll('.pin-key').forEach(b=>b.addEventListener('click',()=>{
+  // PIN pad — delegated listener stored on window to prevent double-binding
+  if(window._pinPadHandler){document.removeEventListener('click',window._pinPadHandler);}
+  window._pinPadHandler=(e=>{
+    const b=e.target.closest('.pin-key');
+    if(!b)return;
+    if(!(S.screen==='login'&&(S.pinScreen==='enter'||S.pinScreen==='set')))return;
+    const k=b.dataset.k;{
     const k=b.dataset.k;
     if(k==='')return;
     const err=$('pinErr');
@@ -688,7 +693,8 @@ function attachEvents(){
         }
       },120);
     }
-  }));
+  }});
+  document.addEventListener('click',window._pinPadHandler);
   $('pinBack')?.addEventListener('click',()=>{S.pinScreen='select';S.user=null;S.pinEntry='';S.pinSetFirst='';render();});
   // Keyboard input for PIN screens
   if(S.screen==='login'&&(S.pinScreen==='enter'||S.pinScreen==='set')){

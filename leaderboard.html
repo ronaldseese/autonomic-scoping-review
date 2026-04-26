@@ -8,7 +8,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;600;700;900&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0d0d0d;color:#fff;font-family:'Inter',sans-serif;min-height:100vh;overflow-x:hidden}
-.page{max-width:860px;margin:0 auto;padding:1.5rem 1rem 3rem}
+.page{max-width:900px;margin:0 auto;padding:1.5rem 1rem 3rem}
 .top-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:2rem;padding-bottom:1rem;border-bottom:1px solid #2a2a2a}
 .board-title{font-family:'Bebas Neue',sans-serif;font-size:42px;letter-spacing:2px;color:#fff;line-height:1}
 .board-sub{font-size:12px;color:#666;margin-top:4px;letter-spacing:0.05em;text-transform:uppercase}
@@ -21,35 +21,37 @@ body{background:#0d0d0d;color:#fff;font-family:'Inter',sans-serif;min-height:100
 .board-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1.5rem}
 .board-name{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;color:#fff}
 .board-date{font-size:11px;color:#555}
-/* Bar chart */
-.bars-wrap{display:flex;align-items:flex-end;gap:12px;height:260px;padding-bottom:0;position:relative}
+.bars-wrap{display:flex;align-items:flex-end;gap:10px;height:300px;position:relative}
 .bar-col{display:flex;flex-direction:column;align-items:center;flex:1;height:100%;justify-content:flex-end;position:relative}
 .bar-outer{width:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;flex:1;position:relative}
-.bar{width:100%;border-radius:6px 6px 0 0;transition:height 0.6s cubic-bezier(.34,1.56,.64,1);position:relative;min-height:4px;display:flex;align-items:flex-start;justify-content:center}
-.bar-val{font-family:'Bebas Neue',sans-serif;font-size:22px;color:#fff;margin-top:6px;position:absolute;top:-32px;width:100%;text-align:center;letter-spacing:1px}
-.bar-name{font-size:13px;font-weight:700;color:#888;margin-top:8px;letter-spacing:0.04em;text-align:center}
-.bar-rank{font-size:10px;color:#555;margin-top:2px}
-/* Place-specific colors — Dance Moms pyramid energy */
-.bar-0{background:linear-gradient(180deg,#ffd700 0%,#f59e0b 100%)} /* 1st gold */
-.bar-1{background:linear-gradient(180deg,#c0c0c0 0%,#9ca3af 100%)} /* 2nd silver */
-.bar-2{background:linear-gradient(180deg,#cd7f32 0%,#92400e 100%)} /* 3rd bronze */
-.bar-3{background:linear-gradient(180deg,#6366f1 0%,#4338ca 100%)} /* 4th indigo */
-.bar-4{background:linear-gradient(180deg,#ec4899 0%,#be185d 100%)} /* 5th pink */
-/* Crown for leader */
-.crown{position:absolute;top:-44px;font-size:20px;width:100%;text-align:center;animation:float 2s ease-in-out infinite}
-@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
-/* Axis line */
-.axis-line{position:absolute;bottom:0;left:0;right:0;height:1px;background:#222;pointer-events:none}
-/* Ticker at top */
-.ticker{background:#1a1a1a;border-radius:8px;padding:8px 14px;margin-bottom:2rem;font-size:12px;color:#555;display:flex;align-items:center;gap:8px}
+.bar{width:100%;border-radius:6px 6px 0 0;transition:height 0.7s cubic-bezier(.34,1.4,.64,1);position:relative;min-height:4px}
+.bar-val{font-family:'Bebas Neue',sans-serif;font-size:20px;color:#fff;position:absolute;top:-28px;width:100%;text-align:center;letter-spacing:1px}
+.bar-nhp{position:absolute;top:-68px;width:100%;text-align:center;font-size:36px;animation:float 2.2s ease-in-out infinite}
+.bar-nhp.leader{animation:float 1.6s ease-in-out infinite}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-5px)}}
+.bar-name{font-size:11px;font-weight:700;color:#888;margin-top:6px;letter-spacing:0.04em;text-align:center;line-height:1.3}
+.bar-species{font-size:9px;color:#444;margin-top:2px;text-align:center;font-style:italic}
+.bar-rank{font-size:10px;color:#555;margin-top:1px;text-align:center}
+.bar-0{background:linear-gradient(180deg,#ffd700 0%,#f59e0b 100%)}
+.bar-1{background:linear-gradient(180deg,#c0c0c0 0%,#9ca3af 100%)}
+.bar-2{background:linear-gradient(180deg,#cd7f32 0%,#92400e 100%)}
+.bar-3{background:linear-gradient(180deg,#6366f1 0%,#4338ca 100%)}
+.bar-4{background:linear-gradient(180deg,#ec4899 0%,#be185d 100%)}
+.crown{position:absolute;top:-90px;font-size:18px;width:100%;text-align:center;animation:crownbob 1.2s ease-in-out infinite}
+@keyframes crownbob{0%,100%{transform:translateY(0) rotate(-5deg)}50%{transform:translateY(-4px) rotate(5deg)}}
+.axis-line{position:absolute;bottom:0;left:0;right:0;height:1px;background:#1e1e1e;pointer-events:none}
+.ticker{background:#1a1a1a;border-radius:8px;padding:10px 16px;margin-bottom:2rem;font-size:12px;color:#555;line-height:1.8}
 .ticker strong{color:#888}
-/* Empty state */
 .empty{text-align:center;padding:3rem 1rem;color:#444;font-size:13px}
-/* Back link */
 .back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#555;text-decoration:none;margin-bottom:1.5rem}
 .back-link:hover{color:#888}
-/* Responsive */
-@media(max-width:500px){.bars-wrap{height:180px;gap:6px}.bar-val{font-size:16px;top:-24px}.board-title{font-size:28px}}
+.roster{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:2rem}
+.roster-card{background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:12px 8px;text-align:center}
+.roster-emoji{font-size:32px;margin-bottom:6px}
+.roster-init{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:#fff}
+.roster-name{font-size:10px;color:#666;margin-top:2px}
+.roster-species{font-size:9px;color:#444;font-style:italic;margin-top:1px}
+@media(max-width:500px){.bars-wrap{height:220px;gap:6px}.bar-val{font-size:14px;top:-22px}.bar-nhp{font-size:24px;top:-52px}.board-title{font-size:28px}.roster{grid-template-columns:repeat(5,1fr);gap:6px}.roster-emoji{font-size:22px}}
 </style>
 </head>
 <body>
@@ -63,6 +65,7 @@ body{background:#0d0d0d;color:#fff;font-family:'Inter',sans-serif;min-height:100
     <div class="sync-pill"><span class="dot loading" id="syncDot"></span><span id="syncLbl">Connecting…</span></div>
   </div>
 
+  <div class="roster" id="roster"></div>
   <div class="ticker" id="ticker"><strong>Loading…</strong></div>
 
   <div class="section-label">This Week</div>
@@ -71,9 +74,7 @@ body{background:#0d0d0d;color:#fff;font-family:'Inter',sans-serif;min-height:100
       <div class="board-name" id="weekLabel">Week of —</div>
       <div class="board-date" id="weekRange"></div>
     </div>
-    <div class="bars-wrap" id="weekBars">
-      <div class="empty">Loading data…</div>
-    </div>
+    <div class="bars-wrap" id="weekBars"><div class="empty">Loading data…</div></div>
   </div>
 
   <div class="section-label">All Time</div>
@@ -82,28 +83,28 @@ body{background:#0d0d0d;color:#fff;font-family:'Inter',sans-serif;min-height:100
       <div class="board-name">Overall</div>
       <div class="board-date" id="totalRecords"></div>
     </div>
-    <div class="bars-wrap" id="allBars">
-      <div class="empty">Loading data…</div>
-    </div>
+    <div class="bars-wrap" id="allBars"><div class="empty">Loading data…</div></div>
   </div>
 </div>
 
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-import{getFirestore,collection,onSnapshot,getDocs}from"https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+import{getFirestore,collection,onSnapshot}from"https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
 
-const FB={
-  apiKey:"AIzaSyC8eLWQGJTX_cftqnJw2B-ltE8U533TlyE",
-  authDomain:"autonomic-scoping-review-9b5fb.firebaseapp.com",
-  projectId:"autonomic-scoping-review-9b5fb",
-  storageBucket:"autonomic-scoping-review-9b5fb.firebasestorage.app",
-  messagingSenderId:"431307735290",
-  appId:"1:431307735290:web:f574bda7558022f35dc943"
-};
+const FB={apiKey:"AIzaSyC8eLWQGJTX_cftqnJw2B-ltE8U533TlyE",authDomain:"autonomic-scoping-review-9b5fb.firebaseapp.com",projectId:"autonomic-scoping-review-9b5fb",storageBucket:"autonomic-scoping-review-9b5fb.firebasestorage.app",messagingSenderId:"431307735290",appId:"1:431307735290:web:f574bda7558022f35dc943"};
 const db=getFirestore(initializeApp(FB));
 
+// ── NHP roster ── each person gets a species tied to the lab's world
+const NHP={
+  AF:{emoji:'🐒',name:'Aaron F.',species:'Common marmoset',note:'Callithrix jacchus — the lab\'s own model organism'},
+  JH:{emoji:'🦧',name:'JH',species:'Bornean orangutan',note:'Pongo pygmaeus — thoughtful, methodical'},
+  LH:{emoji:'🐵',name:'Luis H.',species:'Rhesus macaque',note:'Macaca mulatta — Cayo Santiago royalty'},
+  CS:{emoji:'🙊',name:'Crescenzo S.',species:'Tufted capuchin',note:'Cebus apella — notorious tool user and kleptomaniac'},
+  RS:{emoji:'🐘',name:'Ronnie S.',species:'Squirrel monkey',note:'Saimiri sciureus — autonomic physiology pioneer'},
+};
+// RS gets squirrel monkey — Saimiri is a classic ANS research model and Ronnie would appreciate the nod
+
 const REVS=['AF','JH','LH','CS','RS'];
-const FULL={AF:'Aaron F.',JH:'JH',LH:'Luis H.',CS:'Crescenzo S.',RS:'Ronnie S.'};
 const QS=['q1','q2','q3','q4','q5','q6'];
 
 function weekBounds(){
@@ -115,57 +116,60 @@ function weekBounds(){
 function fmtDate(d){return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
 
 function countCompleted(decisions){
-  // count records where this reviewer answered all 6 or hit a Yes
-  const counts={};
-  REVS.forEach(r=>{counts[r]=0;});
+  const counts={};REVS.forEach(r=>{counts[r]=0;});
   Object.entries(decisions).forEach(([rev,recs])=>{
     if(!counts.hasOwnProperty(rev))return;
     Object.entries(recs).forEach(([recId,ans])=>{
-      const hitYes=QS.some(q=>ans[q]==='yes');
-      const allDone=QS.every(q=>ans[q]);
-      if(hitYes||allDone)counts[rev]++;
+      if(QS.some(q=>ans[q]==='yes')||QS.every(q=>ans[q]))counts[rev]++;
     });
   });
   return counts;
 }
 
 function countWeek(scoreEvents,ws,we){
-  const counts={};REVS.forEach(r=>{counts[r]=0;});
-  // count distinct recIds completed this week per reviewer
   const done={};REVS.forEach(r=>{done[r]=new Set();});
   scoreEvents.forEach(ev=>{
-    if(!ev.ts)return;
-    if(ev.ts>=ws&&ev.ts<=we&&REVS.includes(ev.rev)){
-      // a "completion" event: val is yes (exclude trigger) or the record hit include
-      if(ev.val==='yes'||ev.completed)done[ev.rev].add(ev.recId);
-    }
+    if(ev.ts&&ev.ts>=ws&&ev.ts<=we&&REVS.includes(ev.rev)&&(ev.val==='yes'||ev.completed))
+      done[ev.rev].add(ev.recId);
   });
-  REVS.forEach(r=>{counts[r]=done[r].size;});
+  const counts={};REVS.forEach(r=>{counts[r]=done[r].size;});
   return counts;
 }
 
-function renderBars(containerId,counts,maxOverride){
+function renderRoster(){
+  document.getElementById('roster').innerHTML=REVS.map(r=>`
+    <div class="roster-card">
+      <div class="roster-emoji">${NHP[r].emoji}</div>
+      <div class="roster-init">${r}</div>
+      <div class="roster-name">${NHP[r].name}</div>
+      <div class="roster-species">${NHP[r].species}</div>
+    </div>`).join('');
+}
+
+function renderBars(containerId,counts){
   const container=document.getElementById(containerId);
   const sorted=REVS.map(r=>({rev:r,count:counts[r]||0})).sort((a,b)=>b.count-a.count);
-  const maxVal=maxOverride||Math.max(...sorted.map(s=>s.count),1);
-  const MAX_H=220; // px
+  const maxVal=Math.max(...sorted.map(s=>s.count),1);
+  const MAX_H=200;
   if(sorted.every(s=>s.count===0)){
-    container.innerHTML=`<div class="empty" style="width:100%">No decisions recorded yet.</div>`;
+    container.innerHTML=`<div class="empty" style="width:100%">No decisions recorded yet — get screening!</div>`;
     return;
   }
-  const leader=sorted[0].rev;
   container.innerHTML=sorted.map((s,i)=>{
-    const h=Math.max(Math.round((s.count/maxVal)*MAX_H),s.count>0?8:2);
+    const h=Math.max(Math.round((s.count/maxVal)*MAX_H),s.count>0?10:2);
     const crown=i===0&&s.count>0?`<span class="crown">👑</span>`:'';
+    const nhpClass=i===0?'bar-nhp leader':'bar-nhp';
     return`<div class="bar-col">
       <div class="bar-outer">
         ${crown}
+        <div class="${nhpClass}">${NHP[s.rev].emoji}</div>
         <div class="bar bar-${i}" style="height:${h}px">
           <span class="bar-val">${s.count}</span>
         </div>
       </div>
       <div class="bar-name">${s.rev}</div>
-      <div class="bar-rank">${['1st','2nd','3rd','4th','5th'][i]}</div>
+      <div class="bar-species">${NHP[s.rev].species.split(' ').slice(-1)[0]}</div>
+      <div class="bar-rank">${['🥇','🥈','🥉','4th','5th'][i]}</div>
     </div>`;
   }).join('')+'<div class="axis-line"></div>';
 }
@@ -174,10 +178,12 @@ function updateTicker(allCounts,weekCounts){
   const leader=REVS.reduce((a,b)=>allCounts[a]>=allCounts[b]?a:b);
   const weekLeader=REVS.reduce((a,b)=>weekCounts[a]>=weekCounts[b]?a:b);
   const total=Object.values(allCounts).reduce((a,b)=>a+b,0);
-  document.getElementById('ticker').innerHTML=
-    `<strong>🏆 All-time leader:</strong> ${FULL[leader]||leader} (${allCounts[leader]} records) &nbsp;·&nbsp; `+
-    `<strong>📅 This week:</strong> ${FULL[weekLeader]||weekLeader} (${weekCounts[weekLeader]} records) &nbsp;·&nbsp; `+
-    `<strong>Total screened:</strong> ${total} decisions`;
+  const allZero=total===0;
+  document.getElementById('ticker').innerHTML=allZero
+    ?`<strong>No decisions yet.</strong> First one to screen a record takes the crown.`
+    :`<strong>${NHP[leader].emoji} All-time leader:</strong> ${NHP[leader].name} — ${allCounts[leader]} records &nbsp;·&nbsp; `+
+     `<strong>${NHP[weekLeader].emoji} This week:</strong> ${NHP[weekLeader].name} — ${weekCounts[weekLeader]} records &nbsp;·&nbsp; `+
+     `<strong>Total decisions:</strong> ${total}`;
 }
 
 let decisionsData={};
@@ -187,47 +193,27 @@ function refresh(){
   const{start,end,sun,sat}=weekBounds();
   document.getElementById('weekLabel').textContent='Week of '+fmtDate(sun);
   document.getElementById('weekRange').textContent=fmtDate(sun)+' – '+fmtDate(sat);
-
   const allCounts=countCompleted(decisionsData);
-
-  // week counts: use score_events if available, otherwise fall back to decisions
-  let weekCounts;
-  if(scoreEventsData.length>0){
-    weekCounts=countWeek(scoreEventsData,start,end);
-  } else {
-    // fallback: can't distinguish week from all-time in decisions alone
-    weekCounts={};REVS.forEach(r=>{weekCounts[r]=0;});
-  }
-
+  const weekCounts=scoreEventsData.length>0?countWeek(scoreEventsData,start,end):(()=>{const c={};REVS.forEach(r=>{c[r]=0;});return c;})();
   const totalRecs=Object.keys(Object.values(decisionsData).reduce((acc,recs)=>{Object.keys(recs).forEach(k=>acc[k]=1);return acc},{})).length;
   document.getElementById('totalRecords').textContent=totalRecs+' unique records touched';
-
   renderBars('weekBars',weekCounts);
   renderBars('allBars',allCounts);
   updateTicker(allCounts,weekCounts);
 }
 
-// Listen to decisions
+renderRoster();
+
 onSnapshot(collection(db,'decisions'),snap=>{
   decisionsData={};
-  snap.forEach(d=>{
-    const x=d.data();
-    if(!decisionsData[x.rev])decisionsData[x.rev]={};
-    decisionsData[x.rev][x.recId]=x.answers||{};
-  });
+  snap.forEach(d=>{const x=d.data();if(!decisionsData[x.rev])decisionsData[x.rev]={};decisionsData[x.rev][x.recId]=x.answers||{};});
   document.getElementById('syncDot').className='dot live';
   document.getElementById('syncLbl').textContent='Live';
   refresh();
-},e=>{
-  document.getElementById('syncDot').className='dot';
-  document.getElementById('syncLbl').textContent='Offline';
-});
+},()=>{document.getElementById('syncDot').className='dot';document.getElementById('syncLbl').textContent='Offline';});
 
-// Listen to score events for weekly counts
 onSnapshot(collection(db,'score_events'),snap=>{
-  scoreEventsData=[];
-  snap.forEach(d=>scoreEventsData.push(d.data()));
-  refresh();
+  scoreEventsData=[];snap.forEach(d=>scoreEventsData.push(d.data()));refresh();
 });
 </script>
 </body>
