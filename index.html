@@ -165,8 +165,8 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v3.2 · 2026-04-26';
-let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
+const VERSION='v3.4 · 2026-04-27';
+let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},adjudications:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusIdx:0};
 let unsubs=[];
 
 const $=id=>document.getElementById(id);
@@ -185,16 +185,31 @@ function getDec(recId,rev){
 function getConsolidated(recId){
   const assigned=REVS.filter(r=>(S.assignments[recId]||{})[r]);
   if(assigned.length<2)return null;
+  // Check if an adjudicator has completed this record — their decision is final
+  const adjRevs=Object.keys(S.adjudications[recId]||{});
+  for(const adj of adjRevs){
+    const d=getDec(recId,adj);
+    if(d&&(d.verdict==='exclude'||d.verdict==='include'))return d.verdict; // adjudicator wins
+  }
   const decs=assigned.map(r=>getDec(recId,r)).filter(Boolean);
-  // Need at least 2 completed reviews to consolidate — don't wait for all assigned
   const completed=decs.filter(d=>d.verdict==='exclude'||d.verdict==='include');
   if(completed.length<2)return null;
   const ex=completed.filter(d=>d.verdict==='exclude');
   const inc=completed.filter(d=>d.verdict==='include');
   if(ex.length>0&&inc.length>0)return'conflict';
-  if(ex.length>=2||( ex.length>0&&inc.length===0&&completed.length>=2))return'exclude';
+  if(ex.length>=2)return'exclude';
   if(inc.length>=2)return'include';
-  // One exclude + pending others, or one include + pending others — not enough yet
+  return null;
+}
+function getAdjudicationStatus(recId){
+  // Returns: 'needed' | 'assigned' | 'complete' | null
+  const con=getConsolidated(recId);
+  const adjRevs=Object.keys(S.adjudications[recId]||{});
+  if(adjRevs.length>0){
+    const done=adjRevs.some(r=>{const d=getDec(recId,r);return d&&(d.verdict==='exclude'||d.verdict==='include');});
+    return done?'complete':'assigned';
+  }
+  if(con==='conflict')return'needed';
   return null;
 }
 
@@ -223,6 +238,21 @@ async function saveAssign(recId,rev,val){
   }catch(e){setSync('error');toast('Sync error: '+e.message,4000);}
 }
 
+async function saveAdjudication(recId,rev){
+  // Mark a reviewer as adjudicator for a specific record
+  try{
+    await setDoc(doc(db,'adjudications',recId+'_'+rev),{recId,rev,assignedAt:Date.now()});
+  }catch(e){toast('Error: '+e.message,4000);}
+}
+async function removeAdjudication(recId,rev){
+  try{await deleteDoc(doc(db,'adjudications',recId+'_'+rev));}catch(e){}
+}
+function isAdjudicator(recId,rev){
+  return !!(S.adjudications[recId]&&S.adjudications[recId][rev]);
+}
+async function saveViewPref(rev,focusMode){
+  try{await setDoc(doc(db,'viewprefs',rev),{rev,focusMode,updatedAt:Date.now()});}catch(e){}
+}
 async function savePin(rev,pin){
   try{await setDoc(doc(db,'pins',rev),{rev,pin});}
   catch(e){toast('PIN save error: '+e.message,4000);}
@@ -242,6 +272,14 @@ function startListeners(){
   unsubs.push(onSnapshot(collection(db,'assignments'),snap=>{S.assignments={};snap.forEach(d=>{const x=d.data();if(!S.assignments[x.recId])S.assignments[x.recId]={};S.assignments[x.recId][x.rev]=x.assigned;});safeRender();}));
   unsubs.push(onSnapshot(collection(db,'progress'),snap=>{snap.forEach(d=>{const x=d.data();if(x.rev===S.user&&S.screen==='reviewer')S.page=x.page||1;});},()=>{}));
   unsubs.push(onSnapshot(collection(db,'pins'),snap=>{S.pins={};snap.forEach(d=>{const x=d.data();S.pins[x.rev]=x.pin;});safeRender();},()=>{}));
+  unsubs.push(onSnapshot(collection(db,'adjudications'),snap=>{
+    S.adjudications={};
+    snap.forEach(d=>{const x=d.data();if(!S.adjudications[x.recId])S.adjudications[x.recId]={};S.adjudications[x.recId][x.rev]=x.assignedAt;});
+    safeRender();
+  },()=>{}));
+  unsubs.push(onSnapshot(collection(db,'viewprefs'),snap=>{
+    snap.forEach(d=>{const x=d.data();if(x.rev===S.user){S.focusMode=x.focusMode||false;}});
+  },()=>{}));
 }
 
 function safeRender(){
@@ -335,20 +373,66 @@ function rReviewer(){
   <div style="background:#EAF3DE;border:1px solid #97C459;border-radius:7px;padding:8px 14px;margin-bottom:1rem;font-size:12px;color:#3B6D11;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <div style="flex:1"><strong>Decision logic:</strong> Yes = Exclude (stops cascade). No = Continue. Unclear = Continue (flagged if paired with Yes from co-reviewer).
     <strong>Q2:</strong> Check the full text — abstract language in Rayyan may not match full text language.</div>
-    <button id="jumpIncomplete" class="btn-sm" style="background:#fff;border-color:#97C459;color:#3B6D11;white-space:nowrap;flex-shrink:0">⏭ Jump to next incomplete</button>
+    <div style="display:flex;gap:6px;flex-shrink:0">
+      <button id="jumpIncomplete" class="btn-sm" style="background:#fff;border-color:#97C459;color:#3B6D11;white-space:nowrap">⏭ Jump to next incomplete</button>
+      <button id="toggleFocus" class="btn-sm" style="background:${S.focusMode?'#185FA5':'#fff'};border-color:${S.focusMode?'#185FA5':'#97C459'};color:${S.focusMode?'#fff':'#3B6D11'};white-space:nowrap">${S.focusMode?'📋 List view':'🔍 Focus view'}</button>
+    </div>
   </div>
   ${myRecs.length===0?`<div class="card" style="text-align:center;color:#888;padding:2.5rem">No records assigned yet. Contact admin.</div>`:''}
-  ${pageRecs.map(rec=>rCard(rec,u)).join('')}
-  ${totalPages>1?rPager(pg,totalPages,myRecs.length):''}
+  ${S.focusMode?rFocusCard(myRecs,u):pageRecs.map(rec=>rCard(rec,u)).join('')}
+  ${!S.focusMode&&totalPages>1?rPager(pg,totalPages,myRecs.length):''}
   </div>`;
 }
 
 function rCard(rec,u){
   const ans=(S.decisions[u]||{})[rec.id]||{};
-  const abstractOpen=S.abstractOpen[rec.id];
   const dxOpen=S.dx5[rec.id];
+  const myDecForAbs=getDec(rec.id,u);
+  const myCompleteForAbs=myDecForAbs&&(myDecForAbs.verdict==='exclude'||myDecForAbs.verdict==='include');
+  // Default open if not yet decided; default closed if already decided (unless manually toggled)
+  const absOpen=rec.abstract&&(S.abstractOpen[rec.id]===undefined?(  !myCompleteForAbs):S.abstractOpen[rec.id]);
 
-  const absOpen = rec.abstract && (S.abstractOpen[rec.id]===undefined ? true : S.abstractOpen[rec.id]);
+  // ── Lock check: is this record already consolidated by 2 other reviewers?
+  const con=getConsolidated(rec.id);
+  const myDec=getDec(rec.id,u);
+  const myCompleted=myDec&&(myDec.verdict==='exclude'||myDec.verdict==='include');
+  // Lock if consolidated AND this reviewer hasn't completed it yet
+  const locked=(con==='include'||con==='exclude')&&!myCompleted;
+  // Find who agreed to produce the verdict
+  const agreedRevs=REVS.filter(r=>r!==u&&(S.assignments[rec.id]||{})[r]).filter(r=>{
+    const d=getDec(rec.id,r);return d&&(d.verdict==='exclude'||d.verdict==='include');
+  });
+
+  const pmidLink=rec.pmid?` <a href="https://pubmed.ncbi.nlm.nih.gov/${rec.pmid}/" target="_blank" style="font-size:11px;color:#185FA5;text-decoration:none">PMID:${rec.pmid} ↗</a>`:'';
+  const langTag=rec.language&&rec.language!=='eng'?` <span style="font-size:10px;background:#FAEEDA;color:#854F0B;padding:1px 5px;border-radius:3px;font-weight:600">${rec.language.toUpperCase()}</span>`:'';
+
+  if(locked){
+    // Show locked card — abstract still readable, questions grayed out, clear message
+    const absSection=rec.abstract?`
+      <button class="abstract-toggle" data-abs="${rec.id}">${absOpen?'▾ Hide abstract':'▸ Show abstract'}</button>
+      ${absOpen?`<div class="abstract-body">${window.highlightAbstract(rec.abstract)}</div>
+      <div class="hl-legend">${window.HL_LEGEND.map(l=>`<div class="hl-legend-item"><div class="hl-legend-dot" style="background:${l.color}"></div>${l.label}</div>`).join('')}</div>`:''}
+    `:'';
+    const verdictColor=con==='include'?'#3B6D11':'#A32D2D';
+    const verdictBg=con==='include'?'#EAF3DE':'#FCEBEB';
+    const verdictBorder=con==='include'?'#97C459':'#F09595';
+    const verdictIcon=con==='include'?'✓':'⊘';
+    return`<div class="card" style="opacity:0.75">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;color:#888;margin-bottom:3px">${rec.rayyanId||rec.id} · ${rec.year||''} · <em>${rec.journal||''}</em>${pmidLink}${langTag}</div>
+          <div style="font-size:14px;font-weight:600;line-height:1.4;color:#1a1a1a">${rec.title||'Untitled'}</div>
+          <div style="font-size:12px;color:#666;margin-top:2px">${rec.authors||''}</div>
+          ${absSection}
+        </div>
+        <span class="badge badge-${con==='include'?'include':'exclude'}" style="flex-shrink:0;margin-top:2px">${con}</span>
+      </div>
+      <div style="background:${verdictBg};border:1px solid ${verdictBorder};border-radius:7px;padding:10px 14px;font-size:12px;color:${verdictColor}">
+        ${verdictIcon} <strong>Already ${con}d</strong> — agreed by ${agreedRevs.join(' and ')}. No further input needed from you on this record.
+      </div>
+    </div>`;
+  }
+
   const abstractSection=rec.abstract?`
     <button class="abstract-toggle" data-abs="${rec.id}">${absOpen?'▾ Hide abstract':'▸ Show abstract'}</button>
     ${absOpen?`<div class="abstract-body">${window.highlightAbstract(rec.abstract)}</div>
@@ -376,13 +460,11 @@ function rCard(rec,u){
 
   const dec=getDec(rec.id,u);
   const decBar=dec&&dec.verdict==='exclude'?`<div class="decision-bar decision-exclude">⊘ Exclude — ${dec.trigger}</div>`:dec&&dec.verdict==='include'?`<div class="decision-bar decision-include">✓ Include — passed all 6 criteria</div>`:'';
-  const pmidLink=rec.pmid?` <a href="https://pubmed.ncbi.nlm.nih.gov/${rec.pmid}/" target="_blank" style="font-size:11px;color:#185FA5;text-decoration:none">PMID:${rec.pmid} ↗</a>`:'';
-  const langTag=rec.language&&rec.language!=='eng'?` <span style="font-size:10px;background:#FAEEDA;color:#854F0B;padding:1px 5px;border-radius:3px;font-weight:600">${rec.language.toUpperCase()}</span>`:'';
 
   return`<div class="card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:10px">
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;color:#888;margin-bottom:3px">${rec.rayyanId||rec.id} · ${rec.year||''} · <em>${rec.journal||''}</em>${pmidLink}${langTag}</div>
+        <div style="font-size:11px;color:#888;margin-bottom:3px">${rec.rayyanId||rec.id} · ${rec.year||''} · <em>${rec.journal||''}</em>${pmidLink}${langTag}${isAdjudicator(rec.id,u)?` <span style="font-size:10px;background:#FBEAF0;color:#993556;padding:1px 6px;border-radius:3px;font-weight:600">⚖ Adjudication required</span>`:''}</div>
         <div style="font-size:14px;font-weight:600;line-height:1.4;color:#1a1a1a">${rec.title||'Untitled'}</div>
         <div style="font-size:12px;color:#666;margin-top:2px">${rec.authors||''}</div>
         ${abstractSection}
@@ -395,6 +477,35 @@ function rCard(rec,u){
   </div>`;
 }
 
+function rFocusCard(myRecs,u){
+  // Find first incomplete record to show
+  const pending=myRecs.filter(r=>{
+    const d=getDec(r.id,u);
+    const con=getConsolidated(r.id);
+    const locked=(con==='include'||con==='exclude')&&!(d&&(d.verdict==='exclude'||d.verdict==='include'));
+    return !locked&&(!d||(d.verdict!=='exclude'&&d.verdict!=='include'));
+  });
+  const done=myRecs.length-pending.length;
+  const pct=myRecs.length>0?Math.round(done/myRecs.length*100):0;
+  if(pending.length===0){
+    return`<div class="card" style="text-align:center;padding:3rem">
+      <div style="font-size:48px;margin-bottom:1rem">🎉</div>
+      <div style="font-size:18px;font-weight:600;color:#3B6D11">All done!</div>
+      <div style="font-size:13px;color:#888;margin-top:8px">You have completed all ${myRecs.length} assigned records.</div>
+    </div>`;
+  }
+  const rec=pending[0];
+  const remaining=pending.length;
+  return`<div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div style="font-size:12px;color:#888">${done} of ${myRecs.length} complete · <strong style="color:#185FA5">${remaining} remaining</strong></div>
+      <div style="width:200px;height:6px;background:#e0dfd8;border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:#185FA5;border-radius:3px;transition:width 0.4s"></div>
+      </div>
+    </div>
+    ${rCard(rec,u)}
+  </div>`;
+}
 function rPager(pg,total,count){
   return`<div class="pager">
     <button id="pgPrev" ${pg<=1?'disabled':''}>← Prev</button>
@@ -404,7 +515,7 @@ function rPager(pg,total,count){
 }
 
 function rAdmin(){
-  const tabs=[{id:'assign',label:'Assign'},{id:'compile',label:'Compilation'},{id:'import',label:'CSV Import'},{id:'rayyan',label:'Rayyan Export'},{id:'pins',label:'Manage PINs'}];
+  const tabs=[{id:'assign',label:'Assign'},{id:'compile',label:'Compilation'},{id:'import',label:'CSV Import'},{id:'rayyan',label:'Export'},{id:'pins',label:'Manage PINs'}];
   return`<div>
   <div class="logo-bar"><div class="logo-mark">TAL</div>
   <div style="flex:1"><div class="logo-title">ANS Scoping Review — Admin</div>
@@ -574,11 +685,9 @@ function rRayyan(){
   const ex=recs.filter(r=>getConsolidated(r.id)==='exclude');
   const conf=recs.filter(r=>getConsolidated(r.id)==='conflict');
   return`<div><div class="card">
-    <div class="section-header">Rayyan Re-import Export</div>
+    <div class="section-header">Export Results</div>
     <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6">
-      CSV for Rayyan bulk status update. Included → <strong>Included</strong>. Excluded → <strong>Excluded</strong> with criterion (Q1–Q6).
-      Conflicts and pending records are not exported — resolve conflicts first.<br>
-      Rayyan matches by <strong>title</strong>. PMIDs and Rayyan IDs included. Bulk CSV import requires a <strong>Rayyan paid plan</strong>.
+      Download results as a multi-sheet Excel workbook or CSV. The Excel workbook includes separate sheets for Master, Include, Exclude, Conflict, Pending, and Adjudication records.
     </p>
     <div class="stat-row">
       <div class="stat-card" style="background:#EAF3DE"><div class="stat-num" style="color:#3B6D11">${inc.length}</div><div class="stat-lbl">Will mark Included</div></div>
@@ -587,8 +696,8 @@ function rRayyan(){
       <div class="stat-card"><div class="stat-num" style="color:#888">${recs.length-inc.length-ex.length-conf.length}</div><div class="stat-lbl">Pending (not exported)</div></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button id="exportRayyan" class="btn-success btn-sm">Download Rayyan CSV</button>
-      <button id="exportFull" class="btn-primary btn-sm">Download Full Results CSV</button>
+      <button id="exportExcel" class="btn-success btn-sm">⬇ Download Excel Workbook</button>
+      <button id="exportFull" class="btn-primary btn-sm">⬇ Download Full Results CSV</button>
     </div>
   </div></div>`;
 }
@@ -713,6 +822,13 @@ function attachEvents(){
     render();
     await saveDec(recId,S.user,qid,nv);
     if(nv==='yes'){const qi=QS.findIndex(q=>q.id===qid);for(const nq of QS.slice(qi+1))await saveDec(recId,S.user,nq.id,null);}
+    // Auto-advance in focus mode when record is complete
+    if(S.focusMode&&S.screen==='reviewer'){
+      const d=getDec(recId,S.user);
+      if(d&&(d.verdict==='exclude'||d.verdict==='include')){
+        setTimeout(()=>render(),600); // brief pause so user sees the verdict flash
+      }
+    }
   }));
 
   // assign
@@ -737,6 +853,11 @@ function attachEvents(){
     const rev=b.dataset.rev;
     if(confirm('Reset PIN for '+rev+'? They will need to set a new one on next login.'))resetPin(rev);
   }));
+  $('toggleFocus')?.addEventListener('click',()=>{
+    S.focusMode=!S.focusMode;
+    saveViewPref(S.user,S.focusMode);
+    render();
+  });
   $('jumpIncomplete')?.addEventListener('click',()=>{
     const u=S.user;
     const myRecs=Object.values(S.records).filter(r=>(S.assignments[r.id]||{})[u]);
@@ -756,6 +877,15 @@ function attachEvents(){
       if(recCards[posOnPage])recCards[posOnPage].scrollIntoView({behavior:'smooth',block:'start'});
     },100);
   });
+  document.querySelectorAll('.adj-assign-sel').forEach(sel=>sel.addEventListener('change',async e=>{
+    const recId=sel.dataset.rec;
+    const rev=e.target.value;
+    if(!rev)return;
+    await saveAssign(recId,rev,true); // ensure assigned
+    await saveAdjudication(recId,rev);
+    toast(rev+' assigned as adjudicator');
+    sel.value='';
+  }));
   $('filterRev')?.addEventListener('change',e=>{S.filterRev=e.target.value;S.page=1;render();});
   $('filterStat')?.addEventListener('change',e=>{S.filterStat=e.target.value;S.page=1;render();});
   $('pgPrev')?.addEventListener('click',()=>{if(S.page>1){S.page--;if(S.user)saveProgress(S.user,S.page);render();}});
@@ -789,38 +919,87 @@ function attachEvents(){
   });
 
   // exports
-  $('exportRayyan')?.addEventListener('click',()=>{
-    const recs=Object.values(S.records);
-    const rows=[['rayyan_key','title','authors','year','journal','pubmed_id','decision','exclusion_criterion']];
-    recs.filter(r=>getConsolidated(r.id)==='include').forEach(r=>rows.push([r.rayyanId||r.id,'"'+( r.title||'').replace(/"/g,'""')+'"','"'+(r.authors||'')+'"',r.year||'',r.journal||'',r.pmid||'','Included','']));
-    recs.filter(r=>getConsolidated(r.id)==='exclude').forEach(r=>{
-      const asgn=REVS.filter(rv=>(S.assignments[r.id]||{})[rv]);
-      const reason=asgn.map(rv=>{const d=getDec(r.id,rv);return d&&d.trigger?d.trigger:'';}).filter(Boolean).join('; ');
-      rows.push([r.rayyanId||r.id,'"'+(r.title||'').replace(/"/g,'""')+'"','"'+(r.authors||'')+'"',r.year||'',r.journal||'',r.pmid||'','Excluded',reason]);
-    });
-    dlCSV(rows,'TAL_ANS_Rayyan_'+today()+'.csv');
+  $('exportExcel')?.addEventListener('click',()=>{
+    const script=document.createElement('script');
+    script.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    script.onload=()=>{
+      const recs=Object.values(S.records).sort((a,b)=>String(a.rayyanId||a.id).localeCompare(String(b.rayyanId||b.id)));
+      const HDR=['rayyan_key','title','authors','year','journal','pmid','language',...REVS.map(r=>r+'_decision'),...REVS.map(r=>r+'_completed_at'),'consolidated','consolidated_date','adjudication_required','adjudicator'];
+      function buildRows(subset){
+        return subset.map(r=>{
+          const row=[r.rayyanId||r.id,r.title||'',r.authors||'',r.year||'',r.journal||'',r.pmid||'',r.language||''];
+          REVS.forEach(rv=>{const d=getDec(r.id,rv);row.push(d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'');});
+          REVS.forEach(rv=>{
+            const dd=(S.decisions[rv]||{})[r.id]||{};
+            const ts=dd._updatedAt;
+            const d=getDec(r.id,rv);
+            const done=d&&(d.verdict==='exclude'||d.verdict==='include');
+            row.push(done&&ts?new Date(ts).toISOString().slice(0,19).replace('T',' '):'');
+          });
+          const con=getConsolidated(r.id)||'pending';
+          row.push(con);
+          const compTs=REVS.filter(rv=>{const d=getDec(r.id,rv);return d&&(d.verdict==='exclude'||d.verdict==='include');}).map(rv=>((S.decisions[rv]||{})[r.id]||{})._updatedAt||0);
+          const latest=compTs.length?Math.max(...compTs):0;
+          row.push(latest?new Date(latest).toISOString().slice(0,19).replace('T',' '):'');
+          const adjStatus=getAdjudicationStatus(r.id);
+          row.push(adjStatus?'Yes':'No');
+          row.push(Object.keys(S.adjudications[r.id]||{}).join(', '));
+          return row;
+        });
+      }
+      const wb=XLSX.utils.book_new();
+      const statusOrder={exclude:0,include:1,conflict:2,unclear:3,pending:4};
+      const masterRecs=[...recs].sort((a,b)=>{
+        const ca=statusOrder[getConsolidated(a.id)||'pending']??4;
+        const cb=statusOrder[getConsolidated(b.id)||'pending']??4;
+        return ca-cb||String(a.rayyanId||a.id).localeCompare(String(b.rayyanId||b.id));
+      });
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([HDR,...buildRows(masterRecs)]),'Master');
+      [['Include','include'],['Exclude','exclude'],['Conflict','conflict'],['Pending','pending']].forEach(([name,status])=>{
+        const subset=recs.filter(r=>(getConsolidated(r.id)||'pending')===status);
+        XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([HDR,...buildRows(subset)]),name);
+      });
+      const adjRecs=recs.filter(r=>getAdjudicationStatus(r.id));
+      const adjHdr=['rayyan_key','title','authors','year','journal','pmid',...REVS.map(r=>r+'_decision'),'adjudicator','adjudicator_decision','consolidated'];
+      const adjRows=adjRecs.map(r=>{
+        const row=[r.rayyanId||r.id,r.title||'',r.authors||'',r.year||'',r.journal||'',r.pmid||''];
+        REVS.forEach(rv=>{const d=getDec(r.id,rv);row.push(d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'');});
+        const adjRevs=Object.keys(S.adjudications[r.id]||{});
+        row.push(adjRevs.join(', '));
+        row.push(adjRevs.map(rv=>{const d=getDec(r.id,rv);return d?d.verdict:'pending';}).join(', '));
+        row.push(getConsolidated(r.id)||'pending');
+        return row;
+      });
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([adjHdr,...adjRows]),'Adjudication');
+      XLSX.writeFile(wb,'TAL_ANS_Screening_'+today()+'.xlsx');
+    };
+    document.head.appendChild(script);
   });
   $('exportFull')?.addEventListener('click',()=>{
     const recs=Object.values(S.records).sort((a,b)=>String(a.rayyanId||a.id).localeCompare(String(b.rayyanId||b.id)));
-    const rows=[['rayyan_key','title','authors','year','journal','pmid','language',...REVS.map(r=>r+'_decision'),...REVS.map(r=>r+'_timestamp'),'consolidated','consolidated_date']];
+    const rows=[['rayyan_key','title','authors','year','journal','pmid','language',...REVS.map(r=>r+'_decision'),...REVS.map(r=>r+'_completed_at'),'consolidated','consolidated_date','adjudication_required']];
     recs.forEach(r=>{
       const row=[r.rayyanId||r.id,r.title||'',r.authors||'',r.year||'',r.journal||'',r.pmid||'',r.language||''];
       // decisions
       REVS.forEach(rv=>{const d=getDec(r.id,rv);row.push(d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'');});
-      // timestamps per reviewer
+      // completed_at per reviewer — only populated when reviewer has a final decision
       REVS.forEach(rv=>{
-        const ts=((S.decisions[rv]||{})[r.id]||{})._updatedAt;
-        row.push(ts?new Date(ts).toISOString().slice(0,19).replace('T',' '):'');
+        const decData=(S.decisions[rv]||{})[r.id]||{};
+        const ts=decData._updatedAt;
+        const d=getDec(r.id,rv);
+        const completed=d&&(d.verdict==='exclude'||d.verdict==='include');
+        row.push(completed&&ts?new Date(ts).toISOString().slice(0,19).replace('T',' '):'');
       });
       // consolidated verdict
       const con=getConsolidated(r.id)||'pending';
       row.push(con);
-      // consolidated date = latest timestamp among completed reviewers
+      // consolidated date
       const completedTs=REVS
         .filter(rv=>{const d=getDec(r.id,rv);return d&&(d.verdict==='exclude'||d.verdict==='include');})
         .map(rv=>((S.decisions[rv]||{})[r.id]||{})._updatedAt||0);
       const latestTs=completedTs.length?Math.max(...completedTs):0;
       row.push(latestTs?new Date(latestTs).toISOString().slice(0,19).replace('T',' '):'');
+      row.push(getAdjudicationStatus(r.id)?'Yes':'No');
       rows.push(row);
     });
     dlCSV(rows,'TAL_ANS_full_'+today()+'.csv');
