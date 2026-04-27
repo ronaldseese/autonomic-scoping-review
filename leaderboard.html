@@ -45,8 +45,8 @@ body{background:#0d0d0d;color:#fff;font-family:'Inter',sans-serif;min-height:100
 .empty{text-align:center;padding:3rem 1rem;color:#444;font-size:13px}
 .back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#555;text-decoration:none;margin-bottom:1.5rem}
 .back-link:hover{color:#888}
-.roster{display:table;width:100%;margin-bottom:2rem;border-collapse:separate;border-spacing:8px 0}
-.roster-card{display:table-cell;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:10px 6px;text-align:center;width:20%;vertical-align:top}
+.roster{width:100%;margin-bottom:2rem}
+
 .roster-emoji{font-size:32px;margin-bottom:6px}
 .roster-init{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:#fff}
 .roster-name{font-size:10px;color:#666;margin-top:2px;white-space:nowrap}
@@ -61,7 +61,7 @@ body{background:#0d0d0d;color:#fff;font-family:'Inter',sans-serif;min-height:100
   <div class="top-bar">
     <div>
       <div class="board-title">TAL Screening Leaderboard</div>
-      <div class="board-sub">Translational Autism Laboratory · ANS Scoping Review · v1.4 · 2026-04-26</div>
+      <div class="board-sub">Translational Autism Laboratory · ANS Scoping Review · v1.5 · 2026-04-26</div>
     </div>
     <div class="sync-pill"><span class="dot loading" id="syncDot"></span><span id="syncLbl">Connecting…</span></div>
   </div>
@@ -160,13 +160,16 @@ function countWeek(decisions,ws,we){
 }
 
 function renderRoster(){
-  document.getElementById('roster').innerHTML=REVS.map(r=>`
-    <div class="roster-card">
-      <img src="${NHP[r].img}" style="width:70px;height:70px;object-fit:contain;margin-bottom:4px"/>
-      <div class="roster-init">${r}</div>
-      <div class="roster-name">${NHP[r].name}</div>
-      <div class="roster-species">${NHP[r].species}</div>
-      <div class="roster-latin">${NHP[r].latin}</div>`).join('');
+  document.getElementById('roster').innerHTML=
+    '<table style="width:100%;border-collapse:separate;border-spacing:8px 0;table-layout:fixed"><tr>'+
+    REVS.map(r=>`<td style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:12px 6px;text-align:center;vertical-align:top">
+      <img src="${NHP[r].img}" style="width:72px;height:72px;object-fit:contain;display:block;margin:0 auto 6px"/>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:#fff">${r}</div>
+      <div style="font-size:10px;color:#888;margin-top:2px">${NHP[r].name}</div>
+      <div style="font-size:10px;color:#bbb;margin-top:1px">${NHP[r].species}</div>
+      <div style="font-size:9px;color:#555;font-style:italic;margin-top:1px">${NHP[r].latin}</div>
+    </td>`).join('')+
+    '</tr></table>';
 }
 
 function renderBars(containerId,counts){
