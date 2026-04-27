@@ -165,7 +165,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v3.1 · 2026-04-26';
+const VERSION='v3.2 · 2026-04-26';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
 let unsubs=[];
 
@@ -266,7 +266,7 @@ function render(){
 function syncBar(){return`<div class="sync-status"><span style="font-size:10px;color:#bbb;margin-right:6px">${VERSION}</span><span class="sync-dot ${S.syncStatus}" id="syncDot"></span><span id="syncLbl">${S.syncStatus==='live'?'Live':S.syncStatus==='syncing'?'Syncing…':'Offline'}</span></div>`;}
 
 function rLoginHeader(){
-  return`<div class="logo-bar"><div class="logo-mark">TAL</div><div><div class="logo-title">ANS Scoping Review</div><div class="logo-text">Translational Autism Laboratory · Screening Tool</div></div></div>`;
+  return`<div class="logo-bar"><div class="logo-mark">TAL</div><div><div class="logo-title">ANS Scoping Review</div><div class="logo-text">Translational Autism Laboratory · Screening Tool · <span style="color:#aaa">${VERSION}</span></div></div></div>`;
 }
 function rLogin(){
   return`<div style="max-width:400px;margin:2rem auto">
@@ -802,11 +802,25 @@ function attachEvents(){
   });
   $('exportFull')?.addEventListener('click',()=>{
     const recs=Object.values(S.records).sort((a,b)=>String(a.rayyanId||a.id).localeCompare(String(b.rayyanId||b.id)));
-    const rows=[['rayyan_key','title','authors','year','journal','pmid','language',...REVS.map(r=>r+'_decision'),'consolidated']];
+    const rows=[['rayyan_key','title','authors','year','journal','pmid','language',...REVS.map(r=>r+'_decision'),...REVS.map(r=>r+'_timestamp'),'consolidated','consolidated_date']];
     recs.forEach(r=>{
       const row=[r.rayyanId||r.id,r.title||'',r.authors||'',r.year||'',r.journal||'',r.pmid||'',r.language||''];
+      // decisions
       REVS.forEach(rv=>{const d=getDec(r.id,rv);row.push(d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'');});
-      row.push(getConsolidated(r.id)||'pending');
+      // timestamps per reviewer
+      REVS.forEach(rv=>{
+        const ts=((S.decisions[rv]||{})[r.id]||{})._updatedAt;
+        row.push(ts?new Date(ts).toISOString().slice(0,19).replace('T',' '):'');
+      });
+      // consolidated verdict
+      const con=getConsolidated(r.id)||'pending';
+      row.push(con);
+      // consolidated date = latest timestamp among completed reviewers
+      const completedTs=REVS
+        .filter(rv=>{const d=getDec(r.id,rv);return d&&(d.verdict==='exclude'||d.verdict==='include');})
+        .map(rv=>((S.decisions[rv]||{})[r.id]||{})._updatedAt||0);
+      const latestTs=completedTs.length?Math.max(...completedTs):0;
+      row.push(latestTs?new Date(latestTs).toISOString().slice(0,19).replace('T',' '):'');
       rows.push(row);
     });
     dlCSV(rows,'TAL_ANS_full_'+today()+'.csv');
