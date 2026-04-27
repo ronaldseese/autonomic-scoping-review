@@ -40,7 +40,7 @@ button:disabled{opacity:0.4;cursor:default;pointer-events:none}
 /* Abstract section */
 .abstract-toggle{background:none;border:none;padding:0;font-size:12px;color:#185FA5;cursor:pointer;text-decoration:underline;text-underline-offset:2px;margin-top:5px;display:inline-block;font-family:inherit}
 .abstract-toggle:hover{color:#0C447C;background:none}
-.abstract-body{margin-top:8px;background:#fafaf8;border:1px solid #e8e7e0;border-radius:7px;padding:12px 14px;font-size:12px;line-height:1.7;color:#2a2a2a;width:100%}
+.abstract-body{margin-top:8px;background:#fafaf8;border:1px solid #e8e7e0;border-radius:7px;padding:12px 14px;font-size:13px;line-height:1.7;color:#2a2a2a;width:100%}
 /* Q rows */
 .q-row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #f0efe8}
 .q-row:last-child{border-bottom:none}
@@ -165,7 +165,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v2.5 · 2026-04-26';
+const VERSION='v2.6 · 2026-04-26';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
 let unsubs=[];
 
@@ -796,68 +796,43 @@ function handleFile(file){
 // ── Abstract highlight engine ─────────────────────────────────────────────────
 window.highlightAbstract=function(text){
   if(!text)return'';
-
-  // Q1 — age mentions (flag if ≤24 months or infant/neonate/preterm — reviewer decides)
-  const q1=/(\\b(?:infant|neonat|newborn|preterm|premature|neonate)s?\\b|\\b\\d+\\s*(?:-\\s*)?(?:day|week|month)s?(?:\\s*(?:old|of\\s+age|gestation|corrected))?\\b|\\bage\\s*[<≤=:]?\\s*\\d+\\s*(?:day|week|month)s?\\b|\\b(?:0|1|2)\\s*(?:to|-|–)\\s*\\d+\\s*(?:day|week|month)s?\\b)/gi;
-
-  // Q2 — language signals (non-English words, common foreign phrases)
-  const q2=/(\\b(?:zusammenfassung|résumé|résultats|objectif|méthode|hintergrund|ergebnis|conclusi[oó]n|objetivo|método|resultado|введение|цель|метод|摘要|目的|方法|结果|背景|요약|목적|방법|結果|目的|方法|背景)\\b)/gi;
-
-  // Q3 — heart rate only signals
-  const q3=/(\\b(?:mean\\s+heart\\s+rate|average\\s+heart\\s+rate|resting\\s+heart\\s+rate|heart\\s+rate\\s+(?:alone|only|was\\s+the\\s+only|as\\s+the\\s+(?:sole|only)|measure[sd]?))\\b)/gi;
-
-  // Q4 — animal study signals
-  const q4=/(\\b(?:rat|rats|mouse|mice|murine|rodent|rabbit|rabbits|zebrafish|drosophila|fly|flies|worm|nematode|pig|pigs|porcine|sheep|ovine|bovine|cattle|canine|feline|monkey|monkeys|macaque|primate|non-human\\s+primate|marmoset|guinea\\s+pig|hamster|ferret|animal\\s+model|in\\s+vivo(?!\\s+human)|transgenic|knockout|wild-type|C57BL|Sprague|Wistar|Zucker)\\b)/gi;
-
-  // Q5 — primary dysautonomia signals
-  const q5=/(\\b(?:familial\\s+dysautonomia|riley.day|HSAN|hereditary\\s+sensory|autoimmune\\s+autonomic|autonomic\\s+ganglionopathy|pure\\s+autonomic\\s+failure|PAF\\b|multiple\\s+system\\s+atrophy|MSA\\b|baroreflex\\s+failure|neurogenic\\s+orthostatic|POTS\\b|postural\\s+orthostatic\\s+tachycardia|neurocardiogenic|vasovagal\\s+syncope|pandysautonomia|dysautonomia(?!\\s+in\\s+autism))\\b)/gi;
-
-  // Q6 — computational/modeling signals
-  const q6=/(\\b(?:computational\\s+model|mathematical\\s+model|simulation|simulated|in\\s+silico|neural\\s+network(?!\\s+of)|machine\\s+learning(?!\\s+to\\s+classify\\s+(?:autism|ASD))|deep\\s+learning|algorithm(?:ic)?|finite\\s+element|agent.based\\s+model|synthetic\\s+data|Monte\\s+Carlo|differential\\s+equat)\\b)/gi;
-
-  // Escape HTML first
+  // Escape HTML
   let out=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
-  // Apply highlights — order matters (later ones override for overlaps)
-  // Use a marker system to avoid nested spans
   const marks=[];
-  function addMarks(re,cls){
+  function mark(re,cls){
     let m;re.lastIndex=0;
-    while((m=re.exec(out))!==null){
-      marks.push({start:m.index,end:m.index+m[0].length,cls,text:m[0]});
-    }
+    while((m=re.exec(out))!==null)marks.push({start:m.index,end:m.index+m[0].length,cls});
   }
-  addMarks(q1,'hl-q1');
-  addMarks(q2,'hl-q2');
-  addMarks(q3,'hl-q3');
-  addMarks(q4,'hl-q4');
-  addMarks(q5,'hl-q5');
-  addMarks(q6,'hl-q6');
+  // Q1 amber — age/infant signals
+  mark(/\b(infant|infants|neonat\w*|newborn|preterm|premature|\d+[\s-]*(?:day|week|month)s?(?:\s+(?:old|of age|gestation|corrected))?|age[d]?\s*[<≤=:]\s*\d+\s*(?:day|week|month)s?)\b/gi,'hl-q1');
+  // Q2 violet — non-English words
+  mark(/\b(zusammenfassung|hintergrund|ergebnis|methode|résumé|résultats|objectif|méthode|conclusión|objetivo|método|resultado|achtergrond|samenvatting)\b/gi,'hl-q2');
+  // Q3 blue — heart rate only
+  mark(/\b(mean heart rate|average heart rate|resting heart rate|heart rate (?:alone|only|was the (?:sole|only)|as the (?:sole|only)))\b/gi,'hl-q3');
+  // Q4 green — animal signals
+  mark(/\b(rat|rats|mouse|mice|murine|rodent|rodents|rabbit|rabbits|zebrafish|drosophila|porcine|ovine|bovine|canine|feline|macaque|marmosets?|guinea pig|hamster|ferret|animal model|in vivo|transgenic|knockout|wild.type|C57BL|Sprague|Wistar|Zucker|non.human primate)\b/gi,'hl-q4');
+  // Q5 red — primary dysautonomia
+  mark(/\b(familial dysautonomia|riley.day|HSAN|hereditary sensory|autoimmune autonomic|autonomic ganglionopathy|pure autonomic failure|\bPAF\b|multiple system atrophy|\bMSA\b|baroreflex failure|neurogenic orthostatic|\bPOTS\b|postural orthostatic tachycardia|neurocardiogenic|vasovagal syncope|pandysautonomia)\b/gi,'hl-q5');
+  // Q6 teal — computational
+  mark(/\b(computational model|mathematical model|simulat\w+|in silico|neural network|machine learning|deep learning|algorithm\w*|finite element|agent.based|synthetic data|Monte Carlo|differential equat\w*)\b/gi,'hl-q6');
 
   if(!marks.length)return out;
-
-  // Sort by start, resolve overlaps (last wins)
-  marks.sort((a,b)=>a.start-b.start||(b.end-b.start)-(a.end-a.start));
-
-  // Build output with non-overlapping spans
-  let result='';let pos=0;
+  marks.sort((a,b)=>a.start-b.start);
+  // merge overlaps
   const merged=[];
   for(const m of marks){
     if(merged.length&&m.start<merged[merged.length-1].end){
-      // overlap — extend if needed
       if(m.end>merged[merged.length-1].end)merged[merged.length-1].end=m.end;
-      merged[merged.length-1].cls=m.cls; // last class wins
     } else merged.push({...m});
   }
+  let result='';let pos=0;
   for(const m of merged){
     result+=out.slice(pos,m.start);
     result+=`<span class="${m.cls}">${out.slice(m.start,m.end)}</span>`;
     pos=m.end;
   }
-  result+=out.slice(pos);
-  return result;
+  return result+out.slice(pos);
 };
-
 window.HL_LEGEND=[
   {cls:'hl-q1',color:'rgba(251,191,36,0.5)',label:'Q1 Age'},
   {cls:'hl-q2',color:'rgba(139,92,246,0.5)',label:'Q2 Language'},
