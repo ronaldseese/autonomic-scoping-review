@@ -45,14 +45,14 @@ body{background:#0d0d0d;color:#fff;font-family:'Inter',sans-serif;min-height:100
 .empty{text-align:center;padding:3rem 1rem;color:#444;font-size:13px}
 .back-link{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#555;text-decoration:none;margin-bottom:1.5rem}
 .back-link:hover{color:#888}
-.roster{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:2rem;width:100%}
-.roster-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:10px 6px;text-align:center;min-width:0}
+.roster{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;gap:8px;margin-bottom:2rem;width:100%;justify-content:space-between}
+.roster-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:10px 6px;text-align:center;flex:1;min-width:0;max-width:19%}
 .roster-emoji{font-size:32px;margin-bottom:6px}
 .roster-init{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:#fff}
 .roster-name{font-size:10px;color:#666;margin-top:2px}
 .roster-species{font-size:9px;color:#777;margin-top:2px}
 .roster-latin{font-size:9px;color:#555;font-style:italic;margin-top:1px}
-@media(max-width:500px){.bars-wrap{height:220px;gap:6px}.bar-val{font-size:14px;top:-22px}.bar-nhp{font-size:24px;top:-52px}.board-title{font-size:28px}.roster{grid-template-columns:repeat(5,1fr);gap:6px}.roster-emoji{font-size:22px}}
+@media(max-width:500px){.bars-wrap{height:220px;gap:6px}.bar-val{font-size:14px;top:-22px}.bar-nhp{font-size:24px;top:-52px}.board-title{font-size:28px}.roster{flex-direction:row;flex-wrap:wrap}.roster-emoji{font-size:22px}}
 </style>
 </head>
 <body>
@@ -61,7 +61,7 @@ body{background:#0d0d0d;color:#fff;font-family:'Inter',sans-serif;min-height:100
   <div class="top-bar">
     <div>
       <div class="board-title">TAL Screening Leaderboard</div>
-      <div class="board-sub">Translational Autism Laboratory · ANS Scoping Review</div>
+      <div class="board-sub">Translational Autism Laboratory · ANS Scoping Review · v1.3 · 2026-04-26</div>
     </div>
     <div class="sync-pill"><span class="dot loading" id="syncDot"></span><span id="syncLbl">Connecting…</span></div>
   </div>
