@@ -165,7 +165,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v2.6 · 2026-04-26';
+const VERSION='v2.7 · 2026-04-26';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
 let unsubs=[];
 
@@ -206,6 +206,10 @@ async function saveDec(recId,rev,qid,val){
     setSync('live');
   }catch(e){setSync('error');toast('Sync error: '+e.message,4000);}
 }
+async function saveProgress(rev,page){
+  try{await setDoc(doc(db,'progress',rev),{rev,page,updatedAt:Date.now()});}
+  catch(e){}
+}
 async function saveAssign(recId,rev,val){
   setSync('syncing');
   try{
@@ -232,6 +236,7 @@ function startListeners(){
   unsubs.push(onSnapshot(collection(db,'records'),snap=>{S.records={};snap.forEach(d=>{S.records[d.id]=d.data();});setSync('live');safeRender();},()=>setSync('error')));
   unsubs.push(onSnapshot(collection(db,'decisions'),snap=>{S.decisions={};snap.forEach(d=>{const x=d.data();if(!S.decisions[x.rev])S.decisions[x.rev]={};S.decisions[x.rev][x.recId]=x.answers||{};});safeRender();}));
   unsubs.push(onSnapshot(collection(db,'assignments'),snap=>{S.assignments={};snap.forEach(d=>{const x=d.data();if(!S.assignments[x.recId])S.assignments[x.recId]={};S.assignments[x.recId][x.rev]=x.assigned;});safeRender();}));
+  unsubs.push(onSnapshot(collection(db,'progress'),snap=>{snap.forEach(d=>{const x=d.data();if(x.rev===S.user&&S.screen==='reviewer')S.page=x.page||1;});},()=>{}));
   unsubs.push(onSnapshot(collection(db,'pins'),snap=>{S.pins={};snap.forEach(d=>{const x=d.data();S.pins[x.rev]=x.pin;});safeRender();},()=>{}));
 }
 
@@ -323,9 +328,10 @@ function rReviewer(){
   <div style="flex:1"><div class="logo-title">ANS Scoping Review</div>
   <div class="logo-text">Reviewer: <strong>${u}</strong> · ${done}/${myRecs.length} complete (${pct}%)</div></div>
   ${syncBar()}<button id="logout" class="btn-sm" style="margin-left:10px">Logout</button></div>
-  <div style="background:#EAF3DE;border:1px solid #97C459;border-radius:7px;padding:8px 14px;margin-bottom:1rem;font-size:12px;color:#3B6D11">
-    <strong>Decision logic:</strong> Yes = Exclude (stops cascade). No = Continue. Unclear = Continue (flagged if paired with Yes from co-reviewer).
-    <strong>Q2:</strong> Check the full text — abstract language in Rayyan may not match full text language.
+  <div style="background:#EAF3DE;border:1px solid #97C459;border-radius:7px;padding:8px 14px;margin-bottom:1rem;font-size:12px;color:#3B6D11;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <div style="flex:1"><strong>Decision logic:</strong> Yes = Exclude (stops cascade). No = Continue. Unclear = Continue (flagged if paired with Yes from co-reviewer).
+    <strong>Q2:</strong> Check the full text — abstract language in Rayyan may not match full text language.</div>
+    <button id="jumpIncomplete" class="btn-sm" style="background:#fff;border-color:#97C459;color:#3B6D11;white-space:nowrap;flex-shrink:0">⏭ Jump to next incomplete</button>
   </div>
   ${myRecs.length===0?`<div class="card" style="text-align:center;color:#888;padding:2.5rem">No records assigned yet. Contact admin.</div>`:''}
   ${pageRecs.map(rec=>rCard(rec,u)).join('')}
@@ -720,10 +726,29 @@ function attachEvents(){
     const rev=b.dataset.rev;
     if(confirm('Reset PIN for '+rev+'? They will need to set a new one on next login.'))resetPin(rev);
   }));
+  $('jumpIncomplete')?.addEventListener('click',()=>{
+    const u=S.user;
+    const myRecs=Object.values(S.records).filter(r=>(S.assignments[r.id]||{})[u]);
+    // find first record without a complete decision
+    const firstIdx=myRecs.findIndex(r=>{const d=getDec(r.id,u);return!d||(d.verdict!=='exclude'&&d.verdict!=='include');});
+    if(firstIdx===-1){toast('All assigned records are complete!');return;}
+    const targetPage=Math.floor(firstIdx/S.PAGE)+1;
+    S.page=targetPage;
+    saveProgress(u,targetPage);
+    render();
+    // scroll to the record after render
+    setTimeout(()=>{
+      const posOnPage=firstIdx%S.PAGE;
+      const cards=document.querySelectorAll('.card');
+      // cards[0] is the logic bar, records start after
+      const recCards=Array.from(document.querySelectorAll('.card')).filter(el=>el.querySelector('.q-row'));
+      if(recCards[posOnPage])recCards[posOnPage].scrollIntoView({behavior:'smooth',block:'start'});
+    },100);
+  });
   $('filterRev')?.addEventListener('change',e=>{S.filterRev=e.target.value;S.page=1;render();});
   $('filterStat')?.addEventListener('change',e=>{S.filterStat=e.target.value;S.page=1;render();});
-  $('pgPrev')?.addEventListener('click',()=>{if(S.page>1){S.page--;render();}});
-  $('pgNext')?.addEventListener('click',()=>{S.page++;render();});
+  $('pgPrev')?.addEventListener('click',()=>{if(S.page>1){S.page--;if(S.user)saveProgress(S.user,S.page);render();}});
+  $('pgNext')?.addEventListener('click',()=>{S.page++;if(S.user)saveProgress(S.user,S.page);render();});
 
   // file upload
   const csvFile=$('csvFile');
@@ -888,7 +913,13 @@ window._pinLock=false;},80);
     if((S.pinEntry||'').length===6){
       setTimeout(()=>{
         if(S.pinScreen==='enter'){
-          if(S.pinEntry===S.pins[S.user]){S.screen='reviewer';S.pinScreen='select';S.pinEntry='';S.page=1;render();}
+          if(S.pinEntry===S.pins[S.user]){
+  S.screen='reviewer';S.pinScreen='select';S.pinEntry='';
+  getDocs(collection(db,'progress')).then(snap=>{
+    snap.forEach(d=>{const x=d.data();if(x.rev===S.user)S.page=x.page||1;});
+    render();
+  }).catch(()=>{S.page=1;render();});
+          } else {
           else{S.pinEntry='';for(let i=0;i<6;i++){const d=$('pd'+i);if(d)d.className='pin-dot';}if(err)err.textContent='Incorrect PIN. Try again.';}
         } else if(S.pinScreen==='set'){
           if(S.pinSetStep==='set'){S.pinSetFirst=S.pinEntry;S.pinEntry='';S.pinSetStep='confirm';render();}
