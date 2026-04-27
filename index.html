@@ -165,7 +165,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v2.7 · 2026-04-26';
+const VERSION='v2.8 · 2026-04-26';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
 let unsubs=[];
 
@@ -919,8 +919,7 @@ window._pinLock=false;},80);
     snap.forEach(d=>{const x=d.data();if(x.rev===S.user)S.page=x.page||1;});
     render();
   }).catch(()=>{S.page=1;render();});
-          } else {
-          else{S.pinEntry='';for(let i=0;i<6;i++){const d=$('pd'+i);if(d)d.className='pin-dot';}if(err)err.textContent='Incorrect PIN. Try again.';}
+          } else {S.pinEntry='';for(let i=0;i<6;i++){const d=$('pd'+i);if(d)d.className='pin-dot';}if(err)err.textContent='Incorrect PIN. Try again.';}
         } else if(S.pinScreen==='set'){
           if(S.pinSetStep==='set'){S.pinSetFirst=S.pinEntry;S.pinEntry='';S.pinSetStep='confirm';render();}
           else{
