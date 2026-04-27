@@ -165,7 +165,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v2.8 · 2026-04-26';
+const VERSION='v2.9 · 2026-04-26';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
 let unsubs=[];
 
@@ -186,12 +186,16 @@ function getConsolidated(recId){
   const assigned=REVS.filter(r=>(S.assignments[recId]||{})[r]);
   if(assigned.length<2)return null;
   const decs=assigned.map(r=>getDec(recId,r)).filter(Boolean);
-  if(decs.length<assigned.length)return null;
-  const ex=decs.filter(d=>d.verdict==='exclude'),inc=decs.filter(d=>d.verdict==='include');
+  // Need at least 2 completed reviews to consolidate — don't wait for all assigned
+  const completed=decs.filter(d=>d.verdict==='exclude'||d.verdict==='include');
+  if(completed.length<2)return null;
+  const ex=completed.filter(d=>d.verdict==='exclude');
+  const inc=completed.filter(d=>d.verdict==='include');
   if(ex.length>0&&inc.length>0)return'conflict';
-  if(ex.length===assigned.length)return'exclude';
-  if(inc.length===assigned.length)return'include';
-  return'unclear';
+  if(ex.length>=2||( ex.length>0&&inc.length===0&&completed.length>=2))return'exclude';
+  if(inc.length>=2)return'include';
+  // One exclude + pending others, or one include + pending others — not enough yet
+  return null;
 }
 
 async function saveDec(recId,rev,qid,val){
