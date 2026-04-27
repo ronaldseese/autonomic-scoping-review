@@ -165,14 +165,14 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v2.9 · 2026-04-26';
+const VERSION='v3.1 · 2026-04-26';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:''};
 let unsubs=[];
 
 const $=id=>document.getElementById(id);
 function toast(msg,d=2800){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),d);}
 function setSync(s){S.syncStatus=s;const dot=$('syncDot'),lbl=$('syncLbl');if(dot)dot.className='sync-dot '+s;if(lbl)lbl.textContent=s==='live'?'Live':s==='syncing'?'Syncing…':'Offline';}
-function today(){return new Date().toISOString().slice(0,10);}
+function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function weekStart(){const d=new Date();d.setDate(d.getDate()-d.getDay());d.setHours(0,0,0,0);return d.getTime();}
 
 function getDec(recId,rev){
@@ -661,8 +661,15 @@ async function doImport(parsed){
 }
 
 function dlCSV(rows,name){
+  // Properly quote every field to handle commas in journal names etc.
+  const csv=rows.map(r=>r.map(v=>{
+    const s=String(v===null||v===undefined?'':v);
+    // Always quote if contains comma, quote, or newline
+    if(s.includes(',')||s.includes('"')||s.includes('\n'))return'"'+s.replace(/"/g,'""')+'"';
+    return s;
+  }).join(',')).join('\n');
   const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'}));
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
   a.download=name;a.click();
 }
 
@@ -797,7 +804,7 @@ function attachEvents(){
     const recs=Object.values(S.records).sort((a,b)=>String(a.rayyanId||a.id).localeCompare(String(b.rayyanId||b.id)));
     const rows=[['rayyan_key','title','authors','year','journal','pmid','language',...REVS.map(r=>r+'_decision'),'consolidated']];
     recs.forEach(r=>{
-      const row=[r.rayyanId||r.id,'"'+(r.title||'').replace(/"/g,'""')+'"','"'+(r.authors||'')+'"',r.year||'',r.journal||'',r.pmid||'',r.language||''];
+      const row=[r.rayyanId||r.id,r.title||'',r.authors||'',r.year||'',r.journal||'',r.pmid||'',r.language||''];
       REVS.forEach(rv=>{const d=getDec(r.id,rv);row.push(d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'');});
       row.push(getConsolidated(r.id)||'pending');
       rows.push(row);
