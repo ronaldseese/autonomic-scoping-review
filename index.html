@@ -164,8 +164,8 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v3.5 · 2026-04-27';
-let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},adjudications:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusIdx:0};
+const VERSION='v3.6 · 2026-04-27';
+let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},adjudications:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusIdx:0,calibrationMode:false};
 let unsubs=[];
 
 const $=id=>document.getElementById(id);
@@ -249,6 +249,9 @@ async function removeAdjudication(recId,rev){
 function isAdjudicator(recId,rev){
   return !!(S.adjudications[recId]&&S.adjudications[recId][rev]);
 }
+async function saveCalibrationMode(val){
+  try{await setDoc(doc(db,'settings','calibration'),{enabled:val,updatedAt:Date.now()});}catch(e){}
+}
 async function saveViewPref(rev,focusMode){
   try{await setDoc(doc(db,'viewprefs',rev),{rev,focusMode,updatedAt:Date.now()});}catch(e){}
 }
@@ -275,6 +278,9 @@ function startListeners(){
     S.adjudications={};
     snap.forEach(d=>{const x=d.data();if(!S.adjudications[x.recId])S.adjudications[x.recId]={};S.adjudications[x.recId][x.rev]=x.assignedAt;});
     safeRender();
+  },()=>{}));
+  unsubs.push(onSnapshot(doc(db,'settings','calibration'),snap=>{
+    if(snap.exists()){S.calibrationMode=snap.data().enabled||false;safeRender();}
   },()=>{}));
   unsubs.push(onSnapshot(collection(db,'viewprefs'),snap=>{
     snap.forEach(d=>{const x=d.data();if(x.rev===S.user){S.focusMode=x.focusMode||false;}});
@@ -396,7 +402,7 @@ function rCard(rec,u){
   const myDec=getDec(rec.id,u);
   const myCompleted=myDec&&(myDec.verdict==='exclude'||myDec.verdict==='include');
   // Lock if consolidated AND this reviewer hasn't completed it yet
-  const locked=(con==='include'||con==='exclude')&&!myCompleted;
+  const locked=!S.calibrationMode&&(con==='include'||con==='exclude')&&!myCompleted;
   // Find who agreed to produce the verdict
   const agreedRevs=REVS.filter(r=>r!==u&&(S.assignments[rec.id]||{})[r]).filter(r=>{
     const d=getDec(rec.id,r);return d&&(d.verdict==='exclude'||d.verdict==='include');
@@ -546,7 +552,14 @@ function rAssign(){
     <div class="stat-card"><div class="stat-num" style="color:${conflict>0?'#A32D2D':'inherit'}">${conflict}</div><div class="stat-lbl">Conflicts</div></div>
   </div>
   <div class="card" style="margin-bottom:10px">
-    <div class="section-header">Bulk assign range</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding:10px 14px;background:${S.calibrationMode?'#FAEEDA':'#f5f4f0'};border:1px solid ${S.calibrationMode?'#EF9F27':'#e0dfd8'};border-radius:8px">
+    <div>
+      <div style="font-size:13px;font-weight:600;color:${S.calibrationMode?'#854F0B':'#1a1a1a'}">🎯 Calibration Mode</div>
+      <div style="font-size:11px;color:${S.calibrationMode?'#854F0B':'#888'};margin-top:2px">${S.calibrationMode?'ON — all assigned reviewers can score all records regardless of consolidation status':'OFF — records lock after 2 reviewers agree (normal operation)'}</div>
+    </div>
+    <button id="toggleCalibration" class="${S.calibrationMode?'btn-danger':'btn-primary'} btn-sm">${S.calibrationMode?'Turn Off':'Turn On'}</button>
+  </div>
+  <div class="section-header">Bulk assign range</div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span style="font-size:12px;color:#888">Records</span>
       <input type="number" id="rangeFrom" style="width:75px" value="1" min="1"/>
@@ -852,6 +865,13 @@ function attachEvents(){
     const rev=b.dataset.rev;
     if(confirm('Reset PIN for '+rev+'? They will need to set a new one on next login.'))resetPin(rev);
   }));
+  $('toggleCalibration')?.addEventListener('click',async()=>{
+    const newVal=!S.calibrationMode;
+    S.calibrationMode=newVal;
+    await saveCalibrationMode(newVal);
+    toast(newVal?'Calibration mode ON — all reviewers can score all records':'Calibration mode OFF — normal locking restored');
+    render();
+  });
   $('toggleFocus')?.addEventListener('click',()=>{
     S.focusMode=!S.focusMode;
     saveViewPref(S.user,S.focusMode);
