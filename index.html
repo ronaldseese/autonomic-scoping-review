@@ -144,11 +144,12 @@ const DX=["Congenital central hypoventilation syndrome (CCHS / Ondine's curse)",
 
 const QS=[
   {id:'q1',text:'Are all participants older than 24 months of age?'},
-  {id:'q2',text:'Is the full text in a language other than English? (Please check full text; abstract language may differ.)'},
-  {id:'q3',text:'Does the study report no autonomic biomarkers from this list: HRV, RSA, BPV, BRS, PEP, EDA, or PLR?'},
-  {id:'q4',text:'Is the study strictly of non-human subjects? (e.g. animal or computational)'},
-  {id:'q5',text:'Is the entire study population confounded by primary dysautonomia?',hasDx:true},
+  {id:'q3',text:'Does the study fail to report at least one of the following autonomic biomarkers: HRV, RSA, BPV, BRS, PEP, EDA, or PLR?'},
+  {id:'q4',text:'Is the study conducted exclusively on non-human subjects? (e.g., animal models or computational simulations)'},
+  {id:'q5',text:'Is the entire study population diagnosed with a primary dysautonomia condition?',hasDx:true},
 ];
+// NOTE: Question IDs deliberately skip q2 (English — moved to full text review)
+// so existing Firebase decisions map correctly without migration.
 const REVS=['AF','JH','LH','CS','RS'];
 const ADMIN_PW='marmoset';
 const SAMPLE=[
@@ -164,7 +165,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v3.6 · 2026-04-27';
+const VERSION='v3.7 · 2026-04-27';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},adjudications:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusIdx:0,calibrationMode:false};
 let unsubs=[];
 
@@ -377,7 +378,7 @@ function rReviewer(){
   ${syncBar()}<button id="logout" class="btn-sm" style="margin-left:10px">Logout</button></div>
   <div style="background:#EAF3DE;border:1px solid #97C459;border-radius:7px;padding:8px 14px;margin-bottom:1rem;font-size:12px;color:#3B6D11;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <div style="flex:1"><strong>Decision logic:</strong> Yes = Exclude (stops cascade). No = Continue. Unclear = Continue (flagged if paired with Yes from co-reviewer).
-    <strong>Q2:</strong> Check full text — abstract language may differ. <strong>Q3:</strong> Blue highlights = biomarker terms found (positive signal to keep).</div>
+    <strong>Blue highlights</strong> = ANS biomarker terms found (positive signal — study likely passes Q2).</div>
     <div style="display:flex;gap:6px;flex-shrink:0">
       <button id="jumpIncomplete" class="btn-sm" style="background:#fff;border-color:#97C459;color:#3B6D11;white-space:nowrap">⏭ Jump to next incomplete</button>
       <button id="toggleFocus" class="btn-sm" style="background:${S.focusMode?'#185FA5':'#fff'};border-color:${S.focusMode?'#185FA5':'#97C459'};color:${S.focusMode?'#fff':'#3B6D11'};white-space:nowrap">${S.focusMode?'📋 List view':'🔍 Focus view'}</button>
@@ -507,6 +508,10 @@ function rFocusCard(myRecs,u){
       <div style="width:200px;height:6px;background:#e0dfd8;border-radius:3px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:#185FA5;border-radius:3px;transition:width 0.4s"></div>
       </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+      <button id="focusBack" class="btn-sm" style="font-size:12px">← Back to list</button>
+      <span style="font-size:11px;color:#888">Focus view — one record at a time</span>
     </div>
     ${rCard(rec,u)}
   </div>`;
@@ -865,6 +870,11 @@ function attachEvents(){
     const rev=b.dataset.rev;
     if(confirm('Reset PIN for '+rev+'? They will need to set a new one on next login.'))resetPin(rev);
   }));
+  $('focusBack')?.addEventListener('click',()=>{
+    S.focusMode=false;
+    saveViewPref(S.user,false);
+    render();
+  });
   $('toggleCalibration')?.addEventListener('click',async()=>{
     const newVal=!S.calibrationMode;
     S.calibrationMode=newVal;
@@ -943,10 +953,10 @@ function attachEvents(){
     script.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
     script.onload=()=>{
       const recs=Object.values(S.records).sort((a,b)=>String(a.rayyanId||a.id).localeCompare(String(b.rayyanId||b.id)));
-      const HDR=['rayyan_key','title','authors','year','journal','pmid','language',...REVS.map(r=>r+'_decision'),...REVS.map(r=>r+'_completed_at'),'consolidated','consolidated_date','adjudication_required','adjudicator'];
+      const HDR=['pmid','rayyan_key','title','authors','year','journal','language',...REVS.map(r=>r+'_decision'),...REVS.map(r=>r+'_completed_at'),'consolidated','consolidated_date','adjudication_required','adjudicator'];
       function buildRows(subset){
         return subset.map(r=>{
-          const row=[r.rayyanId||r.id,r.title||'',r.authors||'',r.year||'',r.journal||'',r.pmid||'',r.language||''];
+          const row=[r.pmid||'',r.rayyanId||r.id,r.title||'',r.authors||'',r.year||'',r.journal||'',r.language||''];
           REVS.forEach(rv=>{const d=getDec(r.id,rv);row.push(d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'');});
           REVS.forEach(rv=>{
             const dd=(S.decisions[rv]||{})[r.id]||{};
@@ -996,9 +1006,9 @@ function attachEvents(){
   });
   $('exportFull')?.addEventListener('click',()=>{
     const recs=Object.values(S.records).sort((a,b)=>String(a.rayyanId||a.id).localeCompare(String(b.rayyanId||b.id)));
-    const rows=[['rayyan_key','title','authors','year','journal','pmid','language',...REVS.map(r=>r+'_decision'),...REVS.map(r=>r+'_completed_at'),'consolidated','consolidated_date','adjudication_required']];
+    const rows=[['pmid','rayyan_key','title','authors','year','journal','language',...REVS.map(r=>r+'_decision'),...REVS.map(r=>r+'_completed_at'),'consolidated','consolidated_date','adjudication_required']];
     recs.forEach(r=>{
-      const row=[r.rayyanId||r.id,r.title||'',r.authors||'',r.year||'',r.journal||'',r.pmid||'',r.language||''];
+      const row=[r.pmid||'',r.rayyanId||r.id,r.title||'',r.authors||'',r.year||'',r.journal||'',r.language||''];
       // decisions
       REVS.forEach(rv=>{const d=getDec(r.id,rv);row.push(d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'');});
       // completed_at per reviewer — only populated when reviewer has a final decision
@@ -1053,8 +1063,7 @@ window.highlightAbstract=function(text){
   }
   // Q1 amber — age/infant signals
   mark(/\b(infant|infants|neonat\w*|newborn|preterm|premature|\d+[\s-]*(?:day|week|month)s?(?:\s+(?:old|of age|gestation|corrected))?|age[d]?\s*[<≤=:]\s*\d+\s*(?:day|week|month)s?)\b/gi,'hl-q1');
-  // Q2 violet — non-English words
-  mark(/\b(zusammenfassung|hintergrund|ergebnis|methode|résumé|résultats|objectif|méthode|conclusión|objetivo|método|resultado|achtergrond|samenvatting)\b/gi,'hl-q2');
+  // Q2 (English) removed from abstract screening — no highlight
   // Q3 blue — ANS biomarker terms (highlight = biomarker found = likely NOT excluded by Q3)
   mark(/\b(HRV|heart rate variability|RSA|respiratory sinus arrhythmia|BPV|blood pressure variability|BRS|baroreflex sensitivity|PEP|pre-ejection period|EDA|electrodermal activity|skin conductance|PLR|pupillary light reflex|pupillometry|autonomic biomarker)\b/gi,'hl-q3');
   // Q4 green — animal OR computational signals
@@ -1082,10 +1091,9 @@ window.highlightAbstract=function(text){
 };
 window.HL_LEGEND=[
   {cls:'hl-q1',color:'rgba(251,191,36,0.5)',label:'Q1 Age'},
-  {cls:'hl-q2',color:'rgba(139,92,246,0.5)',label:'Q2 Language'},
-  {cls:'hl-q3',color:'rgba(59,130,246,0.5)',label:'Q3 ANS Biomarkers'},
-  {cls:'hl-q4',color:'rgba(34,197,94,0.5)',label:'Q4 Animal/Computational'},
-  {cls:'hl-q5',color:'rgba(239,68,68,0.5)',label:'Q5 Dysautonomia'},
+  {cls:'hl-q3',color:'rgba(59,130,246,0.5)',label:'Q2 ANS Biomarkers'},
+  {cls:'hl-q4',color:'rgba(34,197,94,0.5)',label:'Q3 Animal/Computational'},
+  {cls:'hl-q5',color:'rgba(239,68,68,0.5)',label:'Q4 Dysautonomia'},
 ];
 
 window._pinLock=false;
@@ -1096,10 +1104,9 @@ window.handlePinKey=function(k){
 // ── Abstract highlight engine ─────────────────────────────────────────────────
 window.HL_LEGEND=[
   {cls:'hl-q1',color:'rgba(251,191,36,0.5)',label:'Q1 Age'},
-  {cls:'hl-q2',color:'rgba(139,92,246,0.5)',label:'Q2 Language'},
-  {cls:'hl-q3',color:'rgba(59,130,246,0.5)',label:'Q3 ANS Biomarkers'},
-  {cls:'hl-q4',color:'rgba(34,197,94,0.5)',label:'Q4 Animal/Computational'},
-  {cls:'hl-q5',color:'rgba(239,68,68,0.5)',label:'Q5 Dysautonomia'},
+  {cls:'hl-q3',color:'rgba(59,130,246,0.5)',label:'Q2 ANS Biomarkers'},
+  {cls:'hl-q4',color:'rgba(34,197,94,0.5)',label:'Q3 Animal/Computational'},
+  {cls:'hl-q5',color:'rgba(239,68,68,0.5)',label:'Q4 Dysautonomia'},
 ];
 
 window._pinLock=false;},80);
