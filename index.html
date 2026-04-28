@@ -140,15 +140,14 @@ import{getFirestore,doc,setDoc,collection,onSnapshot,writeBatch,deleteDoc,getDoc
 const FB={apiKey:"AIzaSyC8eLWQGJTX_cftqnJw2B-ltE8U533TlyE",authDomain:"autonomic-scoping-review-9b5fb.firebaseapp.com",projectId:"autonomic-scoping-review-9b5fb",storageBucket:"autonomic-scoping-review-9b5fb.firebasestorage.app",messagingSenderId:"431307735290",appId:"1:431307735290:web:f574bda7558022f35dc943"};
 const db=getFirestore(initializeApp(FB));
 
-const DX=["Familial dysautonomia (Riley-Day / HSAN III)","HSAN I–V","Dopamine beta-hydroxylase deficiency","AADC deficiency","MEN2B (autonomic features)","Autoimmune autonomic ganglionopathy (AAG)","Paraneoplastic autonomic neuropathy","Lambert-Eaton (autonomic features)","POTS — primary/idiopathic only","Neurogenic orthostatic hypotension — primary","Pure autonomic failure (PAF)","Baroreflex failure — primary","Multiple system atrophy (MSA)","Lewy body autonomic failure","Parkinson disease — predominant autonomic failure","Neurocardiogenic syncope — primary dysautonomia cohort only","Chagas disease autonomic neuropathy","Acute pandysautonomia"];
+const DX=["Congenital central hypoventilation syndrome (CCHS / Ondine's curse)","Familial dysautonomia (Riley-Day / HSAN III)","HSAN I–V (hereditary sensory & autonomic neuropathy)","Dopamine beta-hydroxylase deficiency","AADC deficiency","MEN2B (autonomic features)","Autoimmune autonomic ganglionopathy (AAG)","Paraneoplastic autonomic neuropathy","Lambert-Eaton (autonomic features)","POTS — primary/idiopathic only","Neurogenic orthostatic hypotension — primary","Pure autonomic failure (PAF / Bradbury-Eggleston)","Baroreflex failure — primary","Multiple system atrophy (MSA)","Lewy body autonomic failure","Parkinson disease — predominant autonomic failure","Neurocardiogenic syncope — primary dysautonomia cohort only","Chagas disease autonomic neuropathy","Acute pandysautonomia"];
 
 const QS=[
-  {id:'q1',text:'Age of participants >24 months (study NOT focused on infants ≤24 months)?'},
-  {id:'q2',text:'Language of full text is NOT English? (Check full text — abstract language may differ.)'},
-  {id:'q3',text:'Only outcome reported is mean heart rate (no other ANS/autonomic measures)?'},
-  {id:'q4',text:'Animal study (non-human subjects)?'},
-  {id:'q5',text:'Study population is primary dysautonomia ONLY — no autism/ASD participants included?',hasDx:true},
-  {id:'q6',text:'Computational/modeling study only (no empirical ANS data collected)?'}
+  {id:'q1',text:'Are all participants older than 24 months of age?'},
+  {id:'q2',text:'Is the full text in a language other than English? (Please check full text; abstract language may differ.)'},
+  {id:'q3',text:'Does the study report no autonomic biomarkers from this list: HRV, RSA, BPV, BRS, PEP, EDA, or PLR?'},
+  {id:'q4',text:'Is the study strictly of non-human subjects? (e.g. animal or computational)'},
+  {id:'q5',text:'Is the entire study population confounded by primary dysautonomia?',hasDx:true},
 ];
 const REVS=['AF','JH','LH','CS','RS'];
 const ADMIN_PW='marmoset';
@@ -165,7 +164,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v3.4 · 2026-04-27';
+const VERSION='v3.5 · 2026-04-27';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},adjudications:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusIdx:0};
 let unsubs=[];
 
@@ -372,7 +371,7 @@ function rReviewer(){
   ${syncBar()}<button id="logout" class="btn-sm" style="margin-left:10px">Logout</button></div>
   <div style="background:#EAF3DE;border:1px solid #97C459;border-radius:7px;padding:8px 14px;margin-bottom:1rem;font-size:12px;color:#3B6D11;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <div style="flex:1"><strong>Decision logic:</strong> Yes = Exclude (stops cascade). No = Continue. Unclear = Continue (flagged if paired with Yes from co-reviewer).
-    <strong>Q2:</strong> Check the full text — abstract language in Rayyan may not match full text language.</div>
+    <strong>Q2:</strong> Check full text — abstract language may differ. <strong>Q3:</strong> Blue highlights = biomarker terms found (positive signal to keep).</div>
     <div style="display:flex;gap:6px;flex-shrink:0">
       <button id="jumpIncomplete" class="btn-sm" style="background:#fff;border-color:#97C459;color:#3B6D11;white-space:nowrap">⏭ Jump to next incomplete</button>
       <button id="toggleFocus" class="btn-sm" style="background:${S.focusMode?'#185FA5':'#fff'};border-color:${S.focusMode?'#185FA5':'#97C459'};color:${S.focusMode?'#fff':'#3B6D11'};white-space:nowrap">${S.focusMode?'📋 List view':'🔍 Focus view'}</button>
@@ -444,9 +443,9 @@ function rCard(rec,u){
     const cur=ans[q.id]||null;
     const dxSection=q.hasDx?`
       <button class="dx-toggle" data-dx="${rec.id}">${dxOpen?'▾ Hide':'▸ See'} qualifying diagnoses</button>
-      ${dxOpen?`<div class="dx-panel"><div class="dx-title">Exclude only if population is exclusively one or more of these — with no ASD participants</div>
+      ${dxOpen?`<div class="dx-panel"><div class="dx-title">Exclude if the entire study population is defined by one or more of these primary dysautonomia diagnoses</div>
       <div class="dx-grid">${DX.map(d=>`<div class="dx-item">${d}</div>`).join('')}</div>
-      <div class="dx-note">If ASD participants are included alongside a dysautonomia group → answer <strong>No</strong>.</div></div>`:''}
+      <div class="dx-note">If the population includes any participants without primary dysautonomia → answer <strong>No</strong>.</div></div>`:''}
     `:'';
     return`<div class="q-row${stopped?' q-disabled':''}">
       <span class="q-num q-num-${i+1}">Q${i+1}</span>
@@ -570,7 +569,7 @@ function rAssign(){
         <span style="color:#888;font-size:11px">${(pg-1)*50+i+1}</span>
         <div>
           <div style="font-size:11px;line-height:1.3">${(r.title||'Untitled').length>62?(r.title||'Untitled').slice(0,59)+'…':(r.title||'Untitled')}</div>
-          ${r.pmid?`<div style="font-size:10px;color:#185FA5">PMID:${r.pmid}</div>`:''}
+          <div style="font-size:10px;color:#185FA5;font-weight:500">${r.pmid||r.rayyanId||r.id}</div>
           ${r.language&&r.language!=='eng'?`<span style="font-size:10px;background:#FAEEDA;color:#854F0B;padding:1px 4px;border-radius:3px">${r.language.toUpperCase()}</span>`:''}
         </div>
         <div style="display:flex;gap:3px;flex-wrap:wrap">${REVS.map(rv=>`<span style="font-size:10px;padding:2px 4px;border-radius:4px;background:${(S.assignments[r.id]||{})[rv]?'#B5D4F4':'#f0efe8'};color:${(S.assignments[r.id]||{})[rv]?'#0C447C':'#888'}">${rv}</span>`).join('')}</div>
@@ -618,9 +617,9 @@ function rCompile(){
       const bc=c==='conflict'?'badge-conflict':c==='exclude'?'badge-exclude':c==='include'?'badge-include':c==='unclear'?'badge-unclear':'badge-pending';
       const revSum=asgn.map(rv=>{const d=getDec(r.id,rv);const col=!d?'#888':d.verdict==='exclude'?'#A32D2D':d.verdict==='include'?'#3B6D11':'#854F0B';return`<span style="font-size:11px;color:${col};display:block">${rv}: ${d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'pending'}</span>`;}).join('')||'<span style="font-size:11px;color:#aaa">unassigned</span>';
       return`<div class="compile-row">
-        <span style="color:#888;font-size:11px">${r.rayyanId||r.id}</span>
+        <span style="color:#888;font-size:11px">${r.pmid||r.rayyanId||r.id}</span>
         <div><div style="font-size:12px;font-weight:500;line-height:1.4">${r.title||'Untitled'}</div>
-        <div style="font-size:11px;color:#888;margin-top:1px">${r.authors||''} (${r.year||''})${r.pmid?' · PMID:'+r.pmid:''}</div>
+        <div style="font-size:11px;color:#888;margin-top:1px">${r.authors||''} (${r.year||''})${r.pmid?` · <a href="https://pubmed.ncbi.nlm.nih.gov/${r.pmid}/" target="_blank" style="color:#185FA5;text-decoration:none">PMID:${r.pmid} ↗</a>`:''}</div>
         ${c==='conflict'?`<div class="conflict-note">⚠ Conflict — adjudication required</div>`:''}</div>
         <div>${revSum}</div>
         <span class="badge ${bc}" style="font-size:10px">${c||'pending'}</span>
@@ -1036,14 +1035,13 @@ window.highlightAbstract=function(text){
   mark(/\b(infant|infants|neonat\w*|newborn|preterm|premature|\d+[\s-]*(?:day|week|month)s?(?:\s+(?:old|of age|gestation|corrected))?|age[d]?\s*[<≤=:]\s*\d+\s*(?:day|week|month)s?)\b/gi,'hl-q1');
   // Q2 violet — non-English words
   mark(/\b(zusammenfassung|hintergrund|ergebnis|methode|résumé|résultats|objectif|méthode|conclusión|objetivo|método|resultado|achtergrond|samenvatting)\b/gi,'hl-q2');
-  // Q3 blue — heart rate only
-  mark(/\b(mean heart rate|average heart rate|resting heart rate|heart rate (?:alone|only|was the (?:sole|only)|as the (?:sole|only)))\b/gi,'hl-q3');
-  // Q4 green — animal signals
-  mark(/\b(rat|rats|mouse|mice|murine|rodent|rodents|rabbit|rabbits|zebrafish|drosophila|porcine|ovine|bovine|canine|feline|macaque|marmosets?|guinea pig|hamster|ferret|animal model|in vivo|transgenic|knockout|wild.type|C57BL|Sprague|Wistar|Zucker|non.human primate)\b/gi,'hl-q4');
-  // Q5 red — primary dysautonomia
-  mark(/\b(familial dysautonomia|riley.day|HSAN|hereditary sensory|autoimmune autonomic|autonomic ganglionopathy|pure autonomic failure|\bPAF\b|multiple system atrophy|\bMSA\b|baroreflex failure|neurogenic orthostatic|\bPOTS\b|postural orthostatic tachycardia|neurocardiogenic|vasovagal syncope|pandysautonomia)\b/gi,'hl-q5');
-  // Q6 teal — computational
-  mark(/\b(computational model|mathematical model|simulat\w+|in silico|neural network|machine learning|deep learning|algorithm\w*|finite element|agent.based|synthetic data|Monte Carlo|differential equat\w*)\b/gi,'hl-q6');
+  // Q3 blue — ANS biomarker terms (highlight = biomarker found = likely NOT excluded by Q3)
+  mark(/\b(HRV|heart rate variability|RSA|respiratory sinus arrhythmia|BPV|blood pressure variability|BRS|baroreflex sensitivity|PEP|pre-ejection period|EDA|electrodermal activity|skin conductance|PLR|pupillary light reflex|pupillometry|autonomic biomarker)\b/gi,'hl-q3');
+  // Q4 green — animal OR computational signals
+  mark(/\b(rat|rats|mouse|mice|murine|rodent|rodents|rabbit|rabbits|zebrafish|drosophila|porcine|ovine|bovine|canine|feline|macaque|marmosets?|guinea pig|hamster|ferret|animal model|in vivo|transgenic|knockout|wild.type|C57BL|Sprague|Wistar|Zucker|non.human primate|computational model|mathematical model|simulat\w+|in silico|agent.based|Monte Carlo|finite element)\b/gi,'hl-q4');
+  // Q5 red — primary dysautonomia (including CCHS)
+  mark(/\b(CCHS|congenital central hypoventilation|familial dysautonomia|riley.day|HSAN|hereditary sensory|autoimmune autonomic|autonomic ganglionopathy|pure autonomic failure|\bPAF\b|multiple system atrophy|\bMSA\b|baroreflex failure|neurogenic orthostatic|\bPOTS\b|postural orthostatic tachycardia|neurocardiogenic|vasovagal syncope|pandysautonomia)\b/gi,'hl-q5');
+  // (Q6 computational merged into Q4 — no separate Q6 highlight)
 
   if(!marks.length)return out;
   marks.sort((a,b)=>a.start-b.start);
@@ -1065,10 +1063,9 @@ window.highlightAbstract=function(text){
 window.HL_LEGEND=[
   {cls:'hl-q1',color:'rgba(251,191,36,0.5)',label:'Q1 Age'},
   {cls:'hl-q2',color:'rgba(139,92,246,0.5)',label:'Q2 Language'},
-  {cls:'hl-q3',color:'rgba(59,130,246,0.5)',label:'Q3 HR only'},
-  {cls:'hl-q4',color:'rgba(34,197,94,0.5)',label:'Q4 Animal'},
+  {cls:'hl-q3',color:'rgba(59,130,246,0.5)',label:'Q3 ANS Biomarkers'},
+  {cls:'hl-q4',color:'rgba(34,197,94,0.5)',label:'Q4 Animal/Computational'},
   {cls:'hl-q5',color:'rgba(239,68,68,0.5)',label:'Q5 Dysautonomia'},
-  {cls:'hl-q6',color:'rgba(20,184,166,0.5)',label:'Q6 Computational'},
 ];
 
 window._pinLock=false;
@@ -1080,10 +1077,9 @@ window.handlePinKey=function(k){
 window.HL_LEGEND=[
   {cls:'hl-q1',color:'rgba(251,191,36,0.5)',label:'Q1 Age'},
   {cls:'hl-q2',color:'rgba(139,92,246,0.5)',label:'Q2 Language'},
-  {cls:'hl-q3',color:'rgba(59,130,246,0.5)',label:'Q3 HR only'},
-  {cls:'hl-q4',color:'rgba(34,197,94,0.5)',label:'Q4 Animal'},
+  {cls:'hl-q3',color:'rgba(59,130,246,0.5)',label:'Q3 ANS Biomarkers'},
+  {cls:'hl-q4',color:'rgba(34,197,94,0.5)',label:'Q4 Animal/Computational'},
   {cls:'hl-q5',color:'rgba(239,68,68,0.5)',label:'Q5 Dysautonomia'},
-  {cls:'hl-q6',color:'rgba(20,184,166,0.5)',label:'Q6 Computational'},
 ];
 
 window._pinLock=false;},80);
