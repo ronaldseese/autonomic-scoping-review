@@ -29,6 +29,7 @@ button:disabled{opacity:0.4;cursor:default;pointer-events:none}
 .badge-pending{background:#E6F1FB;color:#185FA5}
 .badge-conflict{background:#FBEAF0;color:#993556}
 .badge-progress{background:#f0efe8;color:#5F5E5A}
+.badge-topical{background:#EEF2FF;color:#4338CA}
 .section-header{font-size:11px;font-weight:600;letter-spacing:0.07em;text-transform:uppercase;color:#888;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid #e8e7e0}
 .nav{display:flex;gap:6px;margin-bottom:1.5rem;flex-wrap:wrap}
 .nav button{font-size:12px;padding:6px 14px;border-radius:20px}
@@ -45,12 +46,10 @@ button:disabled{opacity:0.4;cursor:default;pointer-events:none}
 .q-row{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #f0efe8}
 .q-row:last-child{border-bottom:none}
 .q-num{font-size:11px;font-weight:600;color:#fff;min-width:26px;margin-top:3px;padding:2px 5px;border-radius:4px;text-align:center;flex-shrink:0}
-.q-num-1{background:rgba(180,130,10,0.75)}
-.q-num-2{background:rgba(109,52,196,0.75)}
-.q-num-3{background:rgba(29,100,216,0.75)}
-.q-num-4{background:rgba(14,157,64,0.75)}
-.q-num-5{background:rgba(200,38,38,0.75)}
-.q-num-6{background:rgba(10,154,140,0.75)}
+.q-num-1{background:rgba(180,130,10,0.75)}   /* Q1 Age — amber */
+.q-num-2{background:rgba(29,100,216,0.75)}   /* Q2 ANS Biomarkers — blue */
+.q-num-3{background:rgba(14,157,64,0.75)}    /* Q3 Animal/Computational — green */
+.q-num-4{background:rgba(200,38,38,0.75)}    /* Q4 Dysautonomia — red */
 .q-label-wrap{flex:1;min-width:0}
 .q-label{font-size:13px;line-height:1.5;color:#2a2a2a}
 .q-btns{display:flex;gap:5px;flex-shrink:0}
@@ -165,8 +164,8 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v3.7 · 2026-04-27';
-let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},adjudications:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusIdx:0,calibrationMode:false};
+const VERSION='v3.8 · 2026-04-29';
+let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},adjudications:{},topicalReviews:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusCurrent:null,focusHistory:[],calibrationMode:false};
 let unsubs=[];
 
 const $=id=>document.getElementById(id);
@@ -176,6 +175,7 @@ function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth
 function weekStart(){const d=new Date();d.setDate(d.getDate()-d.getDay());d.setHours(0,0,0,0);return d.getTime();}
 
 function getDec(recId,rev){
+  if((S.topicalReviews[recId]||{})[rev])return{verdict:'topical',trigger:null};
   const ans=(S.decisions[rev]||{})[recId]||{};
   for(let i=0;i<QS.length;i++)if(ans[QS[i].id]==='yes')return{verdict:'exclude',trigger:'Q'+(i+1)};
   if(QS.every(q=>ans[q.id]))return{verdict:'include',trigger:null};
@@ -192,13 +192,17 @@ function getConsolidated(recId){
     if(d&&(d.verdict==='exclude'||d.verdict==='include'))return d.verdict; // adjudicator wins
   }
   const decs=assigned.map(r=>getDec(recId,r)).filter(Boolean);
-  const completed=decs.filter(d=>d.verdict==='exclude'||d.verdict==='include');
+  const completed=decs.filter(d=>d.verdict==='exclude'||d.verdict==='include'||d.verdict==='topical');
   if(completed.length<2)return null;
+  const top=completed.filter(d=>d.verdict==='topical');
+  if(top.length>=2)return'topical';
   const ex=completed.filter(d=>d.verdict==='exclude');
   const inc=completed.filter(d=>d.verdict==='include');
   if(ex.length>0&&inc.length>0)return'conflict';
   if(ex.length>=2)return'exclude';
   if(inc.length>=2)return'include';
+  // one topical + one include/exclude = conflict
+  if(top.length>0)return'conflict';
   return null;
 }
 function getAdjudicationStatus(recId){
@@ -250,6 +254,14 @@ async function removeAdjudication(recId,rev){
 function isAdjudicator(recId,rev){
   return !!(S.adjudications[recId]&&S.adjudications[recId][rev]);
 }
+async function saveTopical(recId,rev,val){
+  setSync('syncing');
+  try{
+    if(val)await setDoc(doc(db,'topical_reviews',recId+'_'+rev),{recId,rev,markedAt:Date.now()});
+    else await deleteDoc(doc(db,'topical_reviews',recId+'_'+rev));
+    setSync('live');
+  }catch(e){setSync('error');toast('Sync error: '+e.message,4000);}
+}
 async function saveCalibrationMode(val){
   try{await setDoc(doc(db,'settings','calibration'),{enabled:val,updatedAt:Date.now()});}catch(e){}
 }
@@ -278,6 +290,11 @@ function startListeners(){
   unsubs.push(onSnapshot(collection(db,'adjudications'),snap=>{
     S.adjudications={};
     snap.forEach(d=>{const x=d.data();if(!S.adjudications[x.recId])S.adjudications[x.recId]={};S.adjudications[x.recId][x.rev]=x.assignedAt;});
+    safeRender();
+  },()=>{}));
+  unsubs.push(onSnapshot(collection(db,'topical_reviews'),snap=>{
+    S.topicalReviews={};
+    snap.forEach(d=>{const x=d.data();if(!S.topicalReviews[x.recId])S.topicalReviews[x.recId]={};S.topicalReviews[x.recId][x.rev]=x.markedAt;});
     safeRender();
   },()=>{}));
   unsubs.push(onSnapshot(doc(db,'settings','calibration'),snap=>{
@@ -401,9 +418,8 @@ function rCard(rec,u){
   // ── Lock check: is this record already consolidated by 2 other reviewers?
   const con=getConsolidated(rec.id);
   const myDec=getDec(rec.id,u);
-  const myCompleted=myDec&&(myDec.verdict==='exclude'||myDec.verdict==='include');
-  // Lock if consolidated AND this reviewer hasn't completed it yet
-  const locked=!S.calibrationMode&&(con==='include'||con==='exclude')&&!myCompleted;
+  const myCompleted=myDec&&(myDec.verdict==='exclude'||myDec.verdict==='include'||myDec.verdict==='topical');
+  const locked=isRecLocked(rec.id,u);
   // Find who agreed to produce the verdict
   const agreedRevs=REVS.filter(r=>r!==u&&(S.assignments[rec.id]||{})[r]).filter(r=>{
     const d=getDec(rec.id,r);return d&&(d.verdict==='exclude'||d.verdict==='include');
@@ -465,7 +481,10 @@ function rCard(rec,u){
   }).join('');
 
   const dec=getDec(rec.id,u);
-  const decBar=dec&&dec.verdict==='exclude'?`<div class="decision-bar decision-exclude">⊘ Exclude — ${dec.trigger}</div>`:dec&&dec.verdict==='include'?`<div class="decision-bar decision-include">✓ Include — passed all 6 criteria</div>`:'';
+  const isTopical=dec&&dec.verdict==='topical';
+  const decBar=dec&&dec.verdict==='exclude'?`<div class="decision-bar decision-exclude">⊘ Exclude — ${dec.trigger}</div>`:dec&&dec.verdict==='include'?`<div class="decision-bar decision-include">✓ Include — passed all criteria</div>`:dec&&dec.verdict==='topical'?`<div class="decision-bar" style="background:#EEF2FF;border:1px solid #A5B4FC;color:#4338CA">📚 Flagged as Topical Review — set aside for reference-mining</div>`:'';
+  const badgeCls=dec?dec.verdict==='exclude'?'exclude':dec.verdict==='include'?'include':dec.verdict==='topical'?'topical':'progress':'pending';
+  const topicalBtn=`<button class="topical-btn btn-sm${isTopical?' btn-danger':''}" data-rec="${rec.id}" style="margin-top:8px;font-size:11px">${isTopical?'↩ Unmark Topical Review':'📚 Mark as Topical Review'}</button>`;
 
   return`<div class="card">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:10px">
@@ -474,46 +493,59 @@ function rCard(rec,u){
         <div style="font-size:14px;font-weight:600;line-height:1.4;color:#1a1a1a">${rec.title||'Untitled'}</div>
         <div style="font-size:12px;color:#666;margin-top:2px">${rec.authors||''}</div>
         ${abstractSection}
+        ${topicalBtn}
       </div>
-      <span class="badge badge-${dec?dec.verdict==='exclude'?'exclude':dec.verdict==='include'?'include':'progress':'pending'}" style="flex-shrink:0;margin-top:2px">${dec?dec.verdict:'pending'}</span>
+      <span class="badge badge-${badgeCls}" style="flex-shrink:0;margin-top:2px">${dec?dec.verdict:'pending'}</span>
     </div>
-    <div style="border-top:1px solid #f0efe8;margin-top:8px">
-    ${qRows}</div>
+    ${isTopical?'':`<div style="border-top:1px solid #f0efe8;margin-top:8px">${qRows}</div>`}
     ${decBar}
   </div>`;
 }
 
+function isFocusDone(recId,u){
+  const d=getDec(recId,u);
+  return d&&(d.verdict==='exclude'||d.verdict==='include'||d.verdict==='topical');
+}
+function isRecLocked(recId,u){
+  if(S.calibrationMode)return false;
+  const con=getConsolidated(recId);
+  return(con==='include'||con==='exclude')&&!isFocusDone(recId,u);
+}
 function rFocusCard(myRecs,u){
-  // Find first incomplete record to show
-  const pending=myRecs.filter(r=>{
-    const d=getDec(r.id,u);
-    const con=getConsolidated(r.id);
-    const locked=(con==='include'||con==='exclude')&&!(d&&(d.verdict==='exclude'||d.verdict==='include'));
-    return !locked&&(!d||(d.verdict!=='exclude'&&d.verdict!=='include'));
-  });
-  const done=myRecs.length-pending.length;
-  const pct=myRecs.length>0?Math.round(done/myRecs.length*100):0;
-  if(pending.length===0){
+  const pending=myRecs.filter(r=>!isRecLocked(r.id,u)&&!isFocusDone(r.id,u));
+  const doneCount=myRecs.filter(r=>isRecLocked(r.id,u)||isFocusDone(r.id,u)).length;
+  const pct=myRecs.length>0?Math.round(doneCount/myRecs.length*100):0;
+
+  // Determine which record to show
+  let rec=null;
+  if(S.focusCurrent&&S.records[S.focusCurrent])rec=S.records[S.focusCurrent];
+  if(!rec&&pending.length>0){rec=pending[0];S.focusCurrent=rec.id;}
+  if(!rec){
     return`<div class="card" style="text-align:center;padding:3rem">
       <div style="font-size:48px;margin-bottom:1rem">🎉</div>
       <div style="font-size:18px;font-weight:600;color:#3B6D11">All done!</div>
       <div style="font-size:13px;color:#888;margin-top:8px">You have completed all ${myRecs.length} assigned records.</div>
     </div>`;
   }
-  const rec=pending[0];
-  const remaining=pending.length;
+
+  const isComplete=isFocusDone(rec.id,u);
+  const hasPrev=S.focusHistory&&S.focusHistory.length>0;
+
   return`<div>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:12px;color:#888">${done} of ${myRecs.length} complete · <strong style="color:#185FA5">${remaining} remaining</strong></div>
+      <div style="font-size:12px;color:#888">${doneCount} of ${myRecs.length} complete · <strong style="color:#185FA5">${pending.length} remaining</strong></div>
       <div style="width:200px;height:6px;background:#e0dfd8;border-radius:3px;overflow:hidden">
         <div style="height:100%;width:${pct}%;background:#185FA5;border-radius:3px;transition:width 0.4s"></div>
       </div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
-      <button id="focusBack" class="btn-sm" style="font-size:12px">← Back to list</button>
+    <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap">
+      <button id="focusBack" class="btn-sm">← Back to list</button>
+      ${hasPrev?`<button id="focusPrev" class="btn-sm">← Previous</button>`:''}
       <span style="font-size:11px;color:#888">Focus view — one record at a time</span>
+      ${isComplete?`<button id="focusNext" class="btn-primary btn-sm" style="margin-left:auto">Next → <kbd style="font-size:9px;opacity:0.7;font-family:monospace">Space</kbd></button>`:''}
     </div>
     ${rCard(rec,u)}
+    ${isComplete?`<div style="text-align:center;padding:10px 0 4px;font-size:12px;color:#888">Decision saved — click <strong>Next →</strong> or press <strong>Space / →</strong> to continue.</div>`:'<div style="text-align:center;padding:8px 0 2px;font-size:11px;color:#aaa">Keyboard: <kbd style="font-family:monospace">Y</kbd>=Yes &nbsp;<kbd style="font-family:monospace">N</kbd>=No &nbsp;<kbd style="font-family:monospace">U</kbd>=Unclear &nbsp;<kbd style="font-family:monospace">T</kbd>=Topical review</div>'}
   </div>`;
 }
 function rPager(pg,total,count){
@@ -582,7 +614,7 @@ function rAssign(){
       const dn=asgn.filter(rv=>{const d=getDec(r.id,rv);return d&&(d.verdict==='exclude'||d.verdict==='include');}).length;
       const pct=asgn.length>0?Math.round(dn/asgn.length*100):0;
       const c=getConsolidated(r.id);
-      const bc=c==='conflict'?'badge-conflict':c==='exclude'?'badge-exclude':c==='include'?'badge-include':c==='unclear'?'badge-unclear':'badge-pending';
+      const bc=c==='conflict'?'badge-conflict':c==='exclude'?'badge-exclude':c==='include'?'badge-include':c==='topical'?'badge-topical':c==='unclear'?'badge-unclear':'badge-pending';
       return`<div class="assign-row">
         <span style="color:#888;font-size:11px">${(pg-1)*50+i+1}</span>
         <div>
@@ -611,20 +643,22 @@ function rCompile(){
   const ex=recs.filter(r=>getConsolidated(r.id)==='exclude').length;
   const inc=recs.filter(r=>getConsolidated(r.id)==='include').length;
   const conf=recs.filter(r=>getConsolidated(r.id)==='conflict').length;
-  const pend=recs.length-ex-inc-conf;
+  const top=recs.filter(r=>getConsolidated(r.id)==='topical').length;
+  const pend=recs.length-ex-inc-conf-top;
   const totalPages=Math.ceil(filtered.length/50)||1;
   const pg=Math.min(S.page,totalPages);
   const pageRecs=filtered.slice((pg-1)*50,pg*50);
   return`<div>
-  <div class="stat-row">
+  <div class="stat-row" style="grid-template-columns:repeat(5,1fr)">
     <div class="stat-card"><div class="stat-num" style="color:#3B6D11">${inc}</div><div class="stat-lbl">Include</div></div>
     <div class="stat-card"><div class="stat-num" style="color:#A32D2D">${ex}</div><div class="stat-lbl">Exclude</div></div>
     <div class="stat-card"><div class="stat-num" style="color:#993556">${conf}</div><div class="stat-lbl">Conflict</div></div>
+    <div class="stat-card"><div class="stat-num" style="color:#4338CA">${top}</div><div class="stat-lbl">Topical Reviews</div></div>
     <div class="stat-card"><div class="stat-num" style="color:#185FA5">${pend}</div><div class="stat-lbl">Pending</div></div>
   </div>
   <div class="filter-bar">
     <select id="filterRev"><option value="all">All reviewers</option>${REVS.map(r=>`<option value="${r}" ${S.filterRev===r?'selected':''}>${r}</option>`).join('')}</select>
-    <select id="filterStat"><option value="all">All statuses</option>${['include','exclude','conflict','unclear','pending'].map(s=>`<option value="${s}" ${S.filterStat===s?'selected':''}>${s}</option>`).join('')}</select>
+    <select id="filterStat"><option value="all">All statuses</option>${['include','exclude','topical','conflict','pending'].map(s=>`<option value="${s}" ${S.filterStat===s?'selected':''}>${s}</option>`).join('')}</select>
     <span style="font-size:11px;color:#888;margin-left:auto">${filtered.length} shown</span>
   </div>
   <div class="card">
@@ -632,8 +666,8 @@ function rCompile(){
     ${pageRecs.map(r=>{
       const asgn=REVS.filter(rv=>(S.assignments[r.id]||{})[rv]);
       const c=getConsolidated(r.id);
-      const bc=c==='conflict'?'badge-conflict':c==='exclude'?'badge-exclude':c==='include'?'badge-include':c==='unclear'?'badge-unclear':'badge-pending';
-      const revSum=asgn.map(rv=>{const d=getDec(r.id,rv);const col=!d?'#888':d.verdict==='exclude'?'#A32D2D':d.verdict==='include'?'#3B6D11':'#854F0B';return`<span style="font-size:11px;color:${col};display:block">${rv}: ${d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'pending'}</span>`;}).join('')||'<span style="font-size:11px;color:#aaa">unassigned</span>';
+      const bc=c==='conflict'?'badge-conflict':c==='exclude'?'badge-exclude':c==='include'?'badge-include':c==='topical'?'badge-topical':c==='unclear'?'badge-unclear':'badge-pending';
+      const revSum=asgn.map(rv=>{const d=getDec(r.id,rv);const col=!d?'#888':d.verdict==='exclude'?'#A32D2D':d.verdict==='include'?'#3B6D11':d.verdict==='topical'?'#4338CA':'#854F0B';return`<span style="font-size:11px;color:${col};display:block">${rv}: ${d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'pending'}</span>`;}).join('')||'<span style="font-size:11px;color:#aaa">unassigned</span>';
       return`<div class="compile-row">
         <span style="color:#888;font-size:11px">${r.pmid||r.rayyanId||r.id}</span>
         <div><div style="font-size:12px;font-weight:500;line-height:1.4">${r.title||'Untitled'}</div>
@@ -701,16 +735,18 @@ function rRayyan(){
   const inc=recs.filter(r=>getConsolidated(r.id)==='include');
   const ex=recs.filter(r=>getConsolidated(r.id)==='exclude');
   const conf=recs.filter(r=>getConsolidated(r.id)==='conflict');
+  const top=recs.filter(r=>getConsolidated(r.id)==='topical');
   return`<div><div class="card">
     <div class="section-header">Export Results</div>
     <p style="font-size:12px;color:#888;margin-bottom:14px;line-height:1.6">
-      Download results as a multi-sheet Excel workbook or CSV. The Excel workbook includes separate sheets for Master, Include, Exclude, Conflict, Pending, and Adjudication records.
+      Download results as a multi-sheet Excel workbook or CSV. The Excel workbook includes separate sheets for Master, Include, Exclude, Topical Reviews, Conflict, Pending, and Adjudication records.
     </p>
-    <div class="stat-row">
+    <div class="stat-row" style="grid-template-columns:repeat(5,1fr)">
       <div class="stat-card" style="background:#EAF3DE"><div class="stat-num" style="color:#3B6D11">${inc.length}</div><div class="stat-lbl">Will mark Included</div></div>
       <div class="stat-card" style="background:#FCEBEB"><div class="stat-num" style="color:#A32D2D">${ex.length}</div><div class="stat-lbl">Will mark Excluded</div></div>
-      <div class="stat-card" style="background:#FBEAF0"><div class="stat-num" style="color:#993556">${conf.length}</div><div class="stat-lbl">Conflicts (not exported)</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:#888">${recs.length-inc.length-ex.length-conf.length}</div><div class="stat-lbl">Pending (not exported)</div></div>
+      <div class="stat-card" style="background:#EEF2FF"><div class="stat-num" style="color:#4338CA">${top.length}</div><div class="stat-lbl">Topical Reviews</div></div>
+      <div class="stat-card" style="background:#FBEAF0"><div class="stat-num" style="color:#993556">${conf.length}</div><div class="stat-lbl">Conflicts</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#888">${recs.length-inc.length-ex.length-conf.length-top.length}</div><div class="stat-lbl">Pending</div></div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button id="exportExcel" class="btn-success btn-sm">⬇ Download Excel Workbook</button>
@@ -839,13 +875,6 @@ function attachEvents(){
     render();
     await saveDec(recId,S.user,qid,nv);
     if(nv==='yes'){const qi=QS.findIndex(q=>q.id===qid);for(const nq of QS.slice(qi+1))await saveDec(recId,S.user,nq.id,null);}
-    // Auto-advance in focus mode when record is complete
-    if(S.focusMode&&S.screen==='reviewer'){
-      const d=getDec(recId,S.user);
-      if(d&&(d.verdict==='exclude'||d.verdict==='include')){
-        setTimeout(()=>render(),600); // brief pause so user sees the verdict flash
-      }
-    }
   }));
 
   // assign
@@ -871,10 +900,25 @@ function attachEvents(){
     if(confirm('Reset PIN for '+rev+'? They will need to set a new one on next login.'))resetPin(rev);
   }));
   $('focusBack')?.addEventListener('click',()=>{
-    S.focusMode=false;
+    S.focusMode=false;S.focusCurrent=null;S.focusHistory=[];
     saveViewPref(S.user,false);
     render();
   });
+  $('focusNext')?.addEventListener('click',()=>{
+    if(S.focusCurrent){if(!S.focusHistory)S.focusHistory=[];S.focusHistory.push(S.focusCurrent);}
+    S.focusCurrent=null;render();
+  });
+  $('focusPrev')?.addEventListener('click',()=>{
+    if(S.focusHistory&&S.focusHistory.length>0){S.focusCurrent=S.focusHistory.pop();render();}
+  });
+  document.querySelectorAll('.topical-btn').forEach(b=>b.addEventListener('click',async()=>{
+    const recId=b.dataset.rec;const u=S.user;
+    const already=!!(S.topicalReviews[recId]||{})[u];
+    if(!S.topicalReviews[recId])S.topicalReviews[recId]={};
+    if(already){delete S.topicalReviews[recId][u];}else{S.topicalReviews[recId][u]=Date.now();}
+    render();
+    await saveTopical(recId,u,!already);
+  }));
   $('toggleCalibration')?.addEventListener('click',async()=>{
     const newVal=!S.calibrationMode;
     S.calibrationMode=newVal;
@@ -884,6 +928,7 @@ function attachEvents(){
   });
   $('toggleFocus')?.addEventListener('click',()=>{
     S.focusMode=!S.focusMode;
+    if(S.focusMode){S.focusCurrent=null;S.focusHistory=[];}
     saveViewPref(S.user,S.focusMode);
     render();
   });
@@ -977,14 +1022,14 @@ function attachEvents(){
         });
       }
       const wb=XLSX.utils.book_new();
-      const statusOrder={exclude:0,include:1,conflict:2,unclear:3,pending:4};
+      const statusOrder={exclude:0,include:1,topical:2,conflict:3,unclear:4,pending:5};
       const masterRecs=[...recs].sort((a,b)=>{
-        const ca=statusOrder[getConsolidated(a.id)||'pending']??4;
-        const cb=statusOrder[getConsolidated(b.id)||'pending']??4;
+        const ca=statusOrder[getConsolidated(a.id)||'pending']??5;
+        const cb=statusOrder[getConsolidated(b.id)||'pending']??5;
         return ca-cb||String(a.rayyanId||a.id).localeCompare(String(b.rayyanId||b.id));
       });
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([HDR,...buildRows(masterRecs)]),'Master');
-      [['Include','include'],['Exclude','exclude'],['Conflict','conflict'],['Pending','pending']].forEach(([name,status])=>{
+      [['Include','include'],['Exclude','exclude'],['Topical Reviews','topical'],['Conflict','conflict'],['Pending','pending']].forEach(([name,status])=>{
         const subset=recs.filter(r=>(getConsolidated(r.id)||'pending')===status);
         XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([HDR,...buildRows(subset)]),name);
       });
@@ -1167,6 +1212,71 @@ document.addEventListener('keydown',e=>{
   if(e.key>='0'&&e.key<='9')window.handlePinKey(e.key);
   else if(e.key==='Backspace')window.handlePinKey('⌫');
   else if(e.key==='Escape')window.handlePinBack();
+});
+
+// Keyboard shortcuts for reviewer / focus mode
+function getActiveQuestion(recId,u){
+  const ans=(S.decisions[u]||{})[recId]||{};
+  for(let i=0;i<QS.length;i++){
+    if(QS.slice(0,i).some(pq=>ans[pq.id]==='yes'))return null; // cascade stopped
+    if(!ans[QS[i].id])return QS[i];
+  }
+  return null;
+}
+document.addEventListener('keydown',e=>{
+  if(S.screen!=='reviewer')return;
+  // Ignore if user is typing in an input/textarea
+  if(['INPUT','TEXTAREA','SELECT'].includes(e.target.tagName))return;
+  const u=S.user;
+  if(S.focusMode&&S.focusCurrent){
+    const recId=S.focusCurrent;
+    const complete=isFocusDone(recId,u);
+    // Navigation when complete
+    if(complete){
+      if(e.key===' '||e.key==='ArrowRight'||e.key==='Enter'){
+        e.preventDefault();
+        if(!S.focusHistory)S.focusHistory=[];
+        S.focusHistory.push(recId);S.focusCurrent=null;render();
+      } else if(e.key==='ArrowLeft'){
+        e.preventDefault();
+        if(S.focusHistory&&S.focusHistory.length>0){S.focusCurrent=S.focusHistory.pop();render();}
+      }
+      return;
+    }
+    // Answer active question
+    const aq=getActiveQuestion(recId,u);
+    if(!aq)return;
+    let val=null;
+    if(e.key==='1'||e.key.toLowerCase()==='y')val='yes';
+    else if(e.key==='2'||e.key.toLowerCase()==='n')val='no';
+    else if(e.key==='3'||e.key.toLowerCase()==='u')val='unclear';
+    else if(e.key.toLowerCase()==='t'){
+      // toggle topical
+      e.preventDefault();
+      const already=!!(S.topicalReviews[recId]||{})[u];
+      if(!S.topicalReviews[recId])S.topicalReviews[recId]={};
+      if(already)delete S.topicalReviews[recId][u];else S.topicalReviews[recId][u]=Date.now();
+      render();saveTopical(recId,u,!already);
+      return;
+    } else if(e.key==='ArrowLeft'){
+      e.preventDefault();
+      if(S.focusHistory&&S.focusHistory.length>0){S.focusCurrent=S.focusHistory.pop();render();}
+      return;
+    }
+    if(val!==null){
+      e.preventDefault();
+      const cur=((S.decisions[u]||{})[recId]||{})[aq.id];
+      const nv=cur===val?null:val;
+      if(!S.decisions[u])S.decisions[u]={};
+      if(!S.decisions[u][recId])S.decisions[u][recId]={};
+      S.decisions[u][recId][aq.id]=nv;
+      if(nv==='yes'){const qi=QS.findIndex(q=>q.id===aq.id);QS.slice(qi+1).forEach(nq=>{delete S.decisions[u][recId][nq.id];});}
+      render();
+      saveDec(recId,u,aq.id,nv).then(()=>{
+        if(nv==='yes'){const qi=QS.findIndex(q=>q.id===aq.id);for(const nq of QS.slice(qi+1))saveDec(recId,u,nq.id,null);}
+      });
+    }
+  }
 });
 
 (async()=>{

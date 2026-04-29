@@ -61,7 +61,7 @@ body{background:#0d0d0d;color:#fff;font-family:'Inter',sans-serif;min-height:100
   <div class="top-bar">
     <div>
       <div class="board-title">TAL Screening Leaderboard</div>
-      <div class="board-sub">Translational Autism Laboratory · ANS Scoping Review · v1.7 · 2026-04-26</div>
+      <div class="board-sub">Translational Autism Laboratory · ANS Scoping Review · v1.8 · 2026-04-29</div>
     </div>
     <div class="sync-pill"><span class="dot loading" id="syncDot"></span><span id="syncLbl">Connecting…</span></div>
   </div>
@@ -114,7 +114,7 @@ const NHP={
 };
 
 const REVS=['AF','JH','LH','CS','RS'];
-const QS=['q1','q2','q3','q4','q5','q6'];
+const QS=['q1','q3','q4','q5'];
 
 function weekBounds(){
   const now=new Date();
@@ -152,7 +152,7 @@ function countWeek(decisions,ws,we){
       const ts=data._updatedAt||0;
       if(ts<ws||ts>we)return;
       const ans=data.answers||data;
-      const QS=['q1','q2','q3','q4','q5','q6'];
+      const QS=['q1','q3','q4','q5'];
       if(QS.some(q=>ans[q]==='yes')||QS.every(q=>ans[q]))counts[rev]++;
     });
   });
