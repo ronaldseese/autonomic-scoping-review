@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>TAL ANS Scoping Review — Screening</title>
+<title>EviSynth — Autonomic Scoping Review · Screening</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;color:#1a1a1a;background:#f5f4f0;min-height:100vh}
@@ -123,6 +123,11 @@ code{font-family:'SF Mono',Monaco,monospace;font-size:11px;background:#f5f4f0;pa
 .hl-q5{background:rgba(239,68,68,0.28);border-radius:2px;padding:0 1px}    /* red    — dysautonomia */
 .hl-q6{background:rgba(20,184,166,0.30);border-radius:2px;padding:0 1px}   /* teal   — computational */
 .hl-legend{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;margin-bottom:2px}
+/* Keyboard shortcuts panel */
+.shortcuts-panel{background:#fff;border:1px solid #e0dfd8;border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:12px}
+.shortcuts-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:4px 16px;margin-top:6px}
+.sk{display:inline-block;background:#f0efe8;border:1px solid #d0cfc8;border-radius:4px;padding:1px 6px;font-family:monospace;font-size:11px;color:#1a1a1a;font-weight:600}
+.shortcuts-note{font-size:11px;color:#aaa;margin-top:8px;padding-top:6px;border-top:1px solid #f0efe8}
 .hl-legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:#666}
 .hl-legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0}
 </style>
@@ -164,8 +169,8 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v3.8 · 2026-04-29';
-let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},adjudications:{},topicalReviews:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusCurrent:null,focusHistory:[],calibrationMode:false};
+const VERSION='v3.9 · 2026-04-29';
+let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},adjudications:{},topicalReviews:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusCurrent:null,focusHistory:[],showShortcuts:false,calibrationMode:false};
 let unsubs=[];
 
 const $=id=>document.getElementById(id);
@@ -327,7 +332,7 @@ function render(){
 function syncBar(){return`<div class="sync-status"><span style="font-size:10px;color:#bbb;margin-right:6px">${VERSION}</span><span class="sync-dot ${S.syncStatus}" id="syncDot"></span><span id="syncLbl">${S.syncStatus==='live'?'Live':S.syncStatus==='syncing'?'Syncing…':'Offline'}</span></div>`;}
 
 function rLoginHeader(){
-  return`<div class="logo-bar"><div class="logo-mark">TAL</div><div><div class="logo-title">ANS Scoping Review</div><div class="logo-text">Translational Autism Laboratory · Screening Tool · <span style="color:#aaa">${VERSION}</span></div></div></div>`;
+  return`<div class="logo-bar"><div class="logo-mark">TAL</div><div><div class="logo-title">EviSynth</div><div class="logo-text">Autonomic Scoping Review · Translational Autism Laboratory · <span style="color:#aaa">${VERSION}</span></div></div></div>`;
 }
 function rLogin(){
   return`<div style="max-width:400px;margin:2rem auto">
@@ -390,17 +395,31 @@ function rReviewer(){
   const pageRecs=myRecs.slice((pg-1)*S.PAGE,pg*S.PAGE);
   return`<div>
   <div class="logo-bar"><div class="logo-mark">TAL</div>
-  <div style="flex:1"><div class="logo-title">ANS Scoping Review</div>
-  <div class="logo-text">Reviewer: <strong>${u}</strong> · ${done}/${myRecs.length} complete (${pct}%)</div></div>
+  <div style="flex:1"><div class="logo-title">EviSynth</div>
+  <div class="logo-text">Autonomic Scoping Review · Reviewer: <strong>${u}</strong> · ${done}/${myRecs.length} complete (${pct}%)</div></div>
   ${syncBar()}<button id="logout" class="btn-sm" style="margin-left:10px">Logout</button></div>
-  <div style="background:#EAF3DE;border:1px solid #97C459;border-radius:7px;padding:8px 14px;margin-bottom:1rem;font-size:12px;color:#3B6D11;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+  <div style="background:#EAF3DE;border:1px solid #97C459;border-radius:7px;padding:8px 14px;margin-bottom:${S.showShortcuts?'0.5rem':'1rem'};font-size:12px;color:#3B6D11;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <div style="flex:1"><strong>Decision logic:</strong> Yes = Exclude (stops cascade). No = Continue. Unclear = Continue (flagged if paired with Yes from co-reviewer).
     <strong>Blue highlights</strong> = ANS biomarker terms found (positive signal — study likely passes Q2).</div>
     <div style="display:flex;gap:6px;flex-shrink:0">
       <button id="jumpIncomplete" class="btn-sm" style="background:#fff;border-color:#97C459;color:#3B6D11;white-space:nowrap">⏭ Jump to next incomplete</button>
       <button id="toggleFocus" class="btn-sm" style="background:${S.focusMode?'#185FA5':'#fff'};border-color:${S.focusMode?'#185FA5':'#97C459'};color:${S.focusMode?'#fff':'#3B6D11'};white-space:nowrap">${S.focusMode?'📋 List view':'🔍 Focus view'}</button>
+      <button id="toggleShortcuts" class="btn-sm" style="background:${S.showShortcuts?'#f0efe8':'#fff'};border-color:#97C459;color:#3B6D11;white-space:nowrap" title="Keyboard shortcuts">⌨ Shortcuts</button>
     </div>
   </div>
+  ${S.showShortcuts?`<div class="shortcuts-panel" style="margin-bottom:1rem">
+    <div style="font-weight:600;color:#1a1a1a;margin-bottom:2px">Keyboard shortcuts <span style="font-size:11px;font-weight:400;color:#888">— active in Focus view</span></div>
+    <div class="shortcuts-grid">
+      <span><span class="sk">Y</span> or <span class="sk">1</span></span><span style="color:#A32D2D;font-weight:500">Yes — exclude (stops cascade)</span>
+      <span><span class="sk">N</span> or <span class="sk">2</span></span><span style="color:#3B6D11;font-weight:500">No — continue to next question</span>
+      <span><span class="sk">U</span> or <span class="sk">3</span></span><span style="color:#854F0B;font-weight:500">Unclear — continue (flagged)</span>
+      <span><span class="sk">T</span></span><span style="color:#4338CA;font-weight:500">Mark / unmark as Topical Review</span>
+      <span><span class="sk">Space</span> or <span class="sk">→</span></span><span>Advance to next record (after decision)</span>
+      <span><span class="sk">←</span></span><span>Go back to previous record</span>
+    </div>
+    <div class="shortcuts-note">Switch to Focus view (🔍 button above) to use keyboard shortcuts. In list view, use mouse clicks only.</div>
+  </div>`:''}
+
   ${myRecs.length===0?`<div class="card" style="text-align:center;color:#888;padding:2.5rem">No records assigned yet. Contact admin.</div>`:''}
   ${S.focusMode?rFocusCard(myRecs,u):pageRecs.map(rec=>rCard(rec,u)).join('')}
   ${!S.focusMode&&totalPages>1?rPager(pg,totalPages,myRecs.length):''}
@@ -560,8 +579,8 @@ function rAdmin(){
   const tabs=[{id:'assign',label:'Assign'},{id:'compile',label:'Compilation'},{id:'import',label:'CSV Import'},{id:'rayyan',label:'Export'},{id:'pins',label:'Manage PINs'}];
   return`<div>
   <div class="logo-bar"><div class="logo-mark">TAL</div>
-  <div style="flex:1"><div class="logo-title">ANS Scoping Review — Admin</div>
-  <div class="logo-text">${Object.keys(S.records).length} records · Firebase live</div></div>
+  <div style="flex:1"><div class="logo-title">EviSynth — Admin</div>
+  <div class="logo-text">Autonomic Scoping Review · ${Object.keys(S.records).length} records · Firebase live</div></div>
   ${syncBar()}<button id="logout" class="btn-sm" style="margin-left:10px">Logout</button></div>
   <div class="nav">${tabs.map(t=>`<button class="admin-tab ${S.adminTab===t.id?'active':''}" data-tab="${t.id}">${t.label}</button>`).join('')}</div>
   ${S.adminTab==='assign'?rAssign():S.adminTab==='compile'?rCompile():S.adminTab==='import'?rImport():S.adminTab==='rayyan'?rRayyan():rPins()}
@@ -932,6 +951,7 @@ function attachEvents(){
     saveViewPref(S.user,S.focusMode);
     render();
   });
+  $('toggleShortcuts')?.addEventListener('click',()=>{S.showShortcuts=!S.showShortcuts;render();});
   $('jumpIncomplete')?.addEventListener('click',()=>{
     const u=S.user;
     const myRecs=Object.values(S.records).filter(r=>(S.assignments[r.id]||{})[u]);
@@ -1045,7 +1065,7 @@ function attachEvents(){
         return row;
       });
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([adjHdr,...adjRows]),'Adjudication');
-      XLSX.writeFile(wb,'TAL_ANS_Screening_'+today()+'.xlsx');
+      XLSX.writeFile(wb,'EviSynth_AutonomicScopingReview_'+today()+'.xlsx');
     };
     document.head.appendChild(script);
   });
@@ -1076,7 +1096,7 @@ function attachEvents(){
       row.push(getAdjudicationStatus(r.id)?'Yes':'No');
       rows.push(row);
     });
-    dlCSV(rows,'TAL_ANS_full_'+today()+'.csv');
+    dlCSV(rows,'EviSynth_AutonomicScopingReview_full_'+today()+'.csv');
   });
 }
 
