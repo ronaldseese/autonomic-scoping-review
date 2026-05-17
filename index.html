@@ -154,7 +154,7 @@ const QS=[
 ];
 // NOTE: Question IDs deliberately skip q2 (English — moved to full text review)
 // so existing Firebase decisions map correctly without migration.
-const REVS=['AF','JH','LH','CS','RS'];
+const REVS=['AF','JH','LH','CS','RS','GP'];
 const ADMIN_PW='marmoset';
 const SAMPLE=[
   {id:'s1',rayyanId:'sample-1',title:'Autonomic dysfunction in children with autism spectrum disorder',authors:'Smith J, Doe A',year:2022,journal:'J Autism Dev Disord',pmid:'',language:'eng',abstract:'Children with autism spectrum disorder (ASD) frequently exhibit signs of autonomic nervous system dysfunction, including altered heart rate variability, electrodermal activity, and thermoregulation. This study examined autonomic profiles in 42 children with ASD aged 4–12 years compared to 40 typically developing controls using ambulatory monitoring. Results indicated significantly reduced vagal tone and elevated sympathetic reactivity in the ASD group. Findings support the autonomic imbalance hypothesis of ASD and suggest potential biomarker utility for clinical stratification.'},
@@ -169,8 +169,8 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v3.9 · 2026-04-29';
-let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},assignments:{},pins:{},adjudications:{},topicalReviews:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusCurrent:null,focusHistory:[],showShortcuts:false,calibrationMode:false};
+const VERSION='v3.11 · 2026-05-17';
+let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},decisionTs:{},assignments:{},pins:{},adjudications:{},topicalReviews:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusCurrent:null,focusHistory:[],showShortcuts:false,calibrationMode:false};
 let unsubs=[];
 
 const $=id=>document.getElementById(id);
@@ -288,7 +288,7 @@ async function initSample(){
 function startListeners(){
   unsubs.forEach(u=>u());unsubs=[];
   unsubs.push(onSnapshot(collection(db,'records'),snap=>{S.records={};snap.forEach(d=>{S.records[d.id]=d.data();});setSync('live');safeRender();},()=>setSync('error')));
-  unsubs.push(onSnapshot(collection(db,'decisions'),snap=>{S.decisions={};snap.forEach(d=>{const x=d.data();if(!S.decisions[x.rev])S.decisions[x.rev]={};S.decisions[x.rev][x.recId]=x.answers||{};});safeRender();}));
+  unsubs.push(onSnapshot(collection(db,'decisions'),snap=>{S.decisions={};S.decisionTs={};snap.forEach(d=>{const x=d.data();if(!S.decisions[x.rev])S.decisions[x.rev]={};if(!S.decisionTs[x.rev])S.decisionTs[x.rev]={};S.decisions[x.rev][x.recId]=x.answers||{};S.decisionTs[x.rev][x.recId]=x.updatedAt||0;});safeRender();}));
   unsubs.push(onSnapshot(collection(db,'assignments'),snap=>{S.assignments={};snap.forEach(d=>{const x=d.data();if(!S.assignments[x.recId])S.assignments[x.recId]={};S.assignments[x.recId][x.rev]=x.assigned;});safeRender();}));
   unsubs.push(onSnapshot(collection(db,'progress'),snap=>{snap.forEach(d=>{const x=d.data();if(x.rev===S.user&&S.screen==='reviewer')S.page=x.page||1;});},()=>{}));
   unsubs.push(onSnapshot(collection(db,'pins'),snap=>{S.pins={};snap.forEach(d=>{const x=d.data();S.pins[x.rev]=x.pin;});safeRender();},()=>{}));
@@ -388,7 +388,7 @@ function rPinSet(){
 function rReviewer(){
   const u=S.user;
   const myRecs=Object.values(S.records).filter(r=>(S.assignments[r.id]||{})[u]);
-  const done=myRecs.filter(r=>{const d=getDec(r.id,u);return d&&(d.verdict==='exclude'||d.verdict==='include');}).length;
+  const done=myRecs.filter(r=>{const d=getDec(r.id,u);return d&&(d.verdict==='exclude'||d.verdict==='include'||d.verdict==='topical');}).length;
   const pct=myRecs.length>0?Math.round(done/myRecs.length*100):0;
   const totalPages=Math.ceil(myRecs.length/S.PAGE)||1;
   const pg=Math.min(S.page,totalPages);
@@ -594,7 +594,7 @@ function rAssign(){
     if(REVS.some(rv=>(S.assignments[r.id]||{})[rv]))assigned++;
     const c=getConsolidated(r.id);
     if(c==='conflict')conflict++;
-    if(c==='exclude'||c==='include')complete++;
+    if(c==='exclude'||c==='include'||c==='topical')complete++;
   });
   const sorted=recs.sort((a,b)=>String(a.rayyanId||a.id).localeCompare(String(b.rayyanId||b.id)));
   const totalPages=Math.ceil(sorted.length/50)||1;
@@ -630,7 +630,7 @@ function rAssign(){
     <div class="assign-header"><span>#</span><span>Title</span><span>Reviewers</span><span>Progress</span><span>Status</span></div>
     ${pageRecs.map((r,i)=>{
       const asgn=REVS.filter(rv=>(S.assignments[r.id]||{})[rv]);
-      const dn=asgn.filter(rv=>{const d=getDec(r.id,rv);return d&&(d.verdict==='exclude'||d.verdict==='include');}).length;
+      const dn=asgn.filter(rv=>{const d=getDec(r.id,rv);return d&&(d.verdict==='exclude'||d.verdict==='include'||d.verdict==='topical');}).length;
       const pct=asgn.length>0?Math.round(dn/asgn.length*100):0;
       const c=getConsolidated(r.id);
       const bc=c==='conflict'?'badge-conflict':c==='exclude'?'badge-exclude':c==='include'?'badge-include':c==='topical'?'badge-topical':c==='unclear'?'badge-unclear':'badge-pending';
@@ -691,7 +691,7 @@ function rCompile(){
         <span style="color:#888;font-size:11px">${r.pmid||r.rayyanId||r.id}</span>
         <div><div style="font-size:12px;font-weight:500;line-height:1.4">${r.title||'Untitled'}</div>
         <div style="font-size:11px;color:#888;margin-top:1px">${r.authors||''} (${r.year||''})${r.pmid?` · <a href="https://pubmed.ncbi.nlm.nih.gov/${r.pmid}/" target="_blank" style="color:#185FA5;text-decoration:none">PMID:${r.pmid} ↗</a>`:''}</div>
-        ${c==='conflict'?`<div class="conflict-note">⚠ Conflict — adjudication required</div>`:''}</div>
+        ${c==='conflict'?`<div class="conflict-note">⚠ Conflict — assign adjudicator below</div>`:''}</div>
         <div>${revSum}</div>
         <span class="badge ${bc}" style="font-size:10px">${c||'pending'}</span>
       </div>`;
@@ -826,11 +826,18 @@ function parseRayyan(raw){
 
 async function doImport(parsed){
   const $msg=$('csvMsg');
-  if($msg)$msg.textContent='Importing — please wait…';
+  if($msg)$msg.textContent='Clearing existing data…';
   const CHUNK=400;
-  const[rS,dS,aS]=await Promise.all([getDocs(collection(db,'records')),getDocs(collection(db,'decisions')),getDocs(collection(db,'assignments'))]);
-  const allDel=[...rS.docs,...dS.docs,...aS.docs];
+  // Clear all screening data (keep pins so reviewers don't have to reset PINs)
+  const[rS,dS,aS,tS,adjS,seS,prS,vpS]=await Promise.all([
+    getDocs(collection(db,'records')),getDocs(collection(db,'decisions')),
+    getDocs(collection(db,'assignments')),getDocs(collection(db,'topical_reviews')),
+    getDocs(collection(db,'adjudications')),getDocs(collection(db,'score_events')),
+    getDocs(collection(db,'progress')),getDocs(collection(db,'viewprefs')),
+  ]);
+  const allDel=[...rS.docs,...dS.docs,...aS.docs,...tS.docs,...adjS.docs,...seS.docs,...prS.docs,...vpS.docs];
   for(let i=0;i<allDel.length;i+=CHUNK){const b=writeBatch(db);allDel.slice(i,i+CHUNK).forEach(d=>b.delete(d.ref));await b.commit();}
+  if($msg)$msg.textContent='Importing records…';
   for(let i=0;i<parsed.length;i+=CHUNK){
     const b=writeBatch(db);
     parsed.slice(i,i+CHUNK).forEach(r=>b.set(doc(db,'records',r.id),r));
@@ -956,7 +963,7 @@ function attachEvents(){
     const u=S.user;
     const myRecs=Object.values(S.records).filter(r=>(S.assignments[r.id]||{})[u]);
     // find first record without a complete decision
-    const firstIdx=myRecs.findIndex(r=>{const d=getDec(r.id,u);return!d||(d.verdict!=='exclude'&&d.verdict!=='include');});
+    const firstIdx=myRecs.findIndex(r=>{const d=getDec(r.id,u);return!d||(d.verdict!=='exclude'&&d.verdict!=='include'&&d.verdict!=='topical');});
     if(firstIdx===-1){toast('All assigned records are complete!');return;}
     const targetPage=Math.floor(firstIdx/S.PAGE)+1;
     S.page=targetPage;
@@ -1024,15 +1031,14 @@ function attachEvents(){
           const row=[r.pmid||'',r.rayyanId||r.id,r.title||'',r.authors||'',r.year||'',r.journal||'',r.language||''];
           REVS.forEach(rv=>{const d=getDec(r.id,rv);row.push(d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'');});
           REVS.forEach(rv=>{
-            const dd=(S.decisions[rv]||{})[r.id]||{};
-            const ts=dd._updatedAt;
             const d=getDec(r.id,rv);
-            const done=d&&(d.verdict==='exclude'||d.verdict==='include');
+            const done=d&&(d.verdict==='exclude'||d.verdict==='include'||d.verdict==='topical');
+            const ts=d&&d.verdict==='topical'?((S.topicalReviews[r.id]||{})[rv]||0):((S.decisionTs[rv]||{})[r.id]||0);
             row.push(done&&ts?new Date(ts).toISOString().slice(0,19).replace('T',' '):'');
           });
           const con=getConsolidated(r.id)||'pending';
           row.push(con);
-          const compTs=REVS.filter(rv=>{const d=getDec(r.id,rv);return d&&(d.verdict==='exclude'||d.verdict==='include');}).map(rv=>((S.decisions[rv]||{})[r.id]||{})._updatedAt||0);
+          const compTs=REVS.filter(rv=>{const d=getDec(r.id,rv);return d&&(d.verdict==='exclude'||d.verdict==='include'||d.verdict==='topical');}).map(rv=>(S.decisionTs[rv]||{})[r.id]||0);
           const latest=compTs.length?Math.max(...compTs):0;
           row.push(latest?new Date(latest).toISOString().slice(0,19).replace('T',' '):'');
           const adjStatus=getAdjudicationStatus(r.id);
@@ -1078,10 +1084,9 @@ function attachEvents(){
       REVS.forEach(rv=>{const d=getDec(r.id,rv);row.push(d?d.verdict+(d.trigger?' ('+d.trigger+')':''):'');});
       // completed_at per reviewer — only populated when reviewer has a final decision
       REVS.forEach(rv=>{
-        const decData=(S.decisions[rv]||{})[r.id]||{};
-        const ts=decData._updatedAt;
         const d=getDec(r.id,rv);
-        const completed=d&&(d.verdict==='exclude'||d.verdict==='include');
+        const completed=d&&(d.verdict==='exclude'||d.verdict==='include'||d.verdict==='topical');
+        const ts=d&&d.verdict==='topical'?((S.topicalReviews[r.id]||{})[rv]||0):((S.decisionTs[rv]||{})[r.id]||0);
         row.push(completed&&ts?new Date(ts).toISOString().slice(0,19).replace('T',' '):'');
       });
       // consolidated verdict
@@ -1089,8 +1094,8 @@ function attachEvents(){
       row.push(con);
       // consolidated date
       const completedTs=REVS
-        .filter(rv=>{const d=getDec(r.id,rv);return d&&(d.verdict==='exclude'||d.verdict==='include');})
-        .map(rv=>((S.decisions[rv]||{})[r.id]||{})._updatedAt||0);
+        .filter(rv=>{const d=getDec(r.id,rv);return d&&(d.verdict==='exclude'||d.verdict==='include'||d.verdict==='topical');})
+        .map(rv=>(S.decisionTs[rv]||{})[r.id]||0);
       const latestTs=completedTs.length?Math.max(...completedTs):0;
       row.push(latestTs?new Date(latestTs).toISOString().slice(0,19).replace('T',' '):'');
       row.push(getAdjudicationStatus(r.id)?'Yes':'No');
