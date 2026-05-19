@@ -175,7 +175,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v3.14 · 2026-05-19';
+const VERSION='v3.15 · 2026-05-19';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},decisionTs:{},assignments:{},pins:{},adjudications:{},topicalReviews:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusCurrent:null,focusHistory:[],showShortcuts:false,calibrationMode:false};
 let unsubs=[];
 
@@ -421,13 +421,17 @@ function rReviewer(){
       <span><span class="sk">N</span> or <span class="sk">2</span></span><span style="color:#3B6D11;font-weight:500">No — continue to next question</span>
       <span><span class="sk">U</span> or <span class="sk">3</span></span><span style="color:#854F0B;font-weight:500">Unclear — continue (flagged)</span>
       <span><span class="sk">T</span></span><span style="color:#4338CA;font-weight:500">Mark / unmark as Topical Review</span>
-      <span><span class="sk">Space</span> or <span class="sk">→</span></span><span>Advance to next record (after decision)</span>
-      <span><span class="sk">←</span></span><span>Go back to previous record</span>
+      <span><span class="sk">'</span> or <span class="sk">Space</span> / <span class="sk">→</span></span><span>Advance to next record (after decision)</span>
+      <span><span class="sk">;</span> or <span class="sk">←</span></span><span>Go back to previous record</span>
     </div>
     <div class="shortcuts-note">Switch to Focus view (🔍 button above) to use keyboard shortcuts. In list view, use mouse clicks only.</div>
   </div>`:''}
 
   ${myRecs.length===0?`<div class="card" style="text-align:center;color:#888;padding:2.5rem">No records assigned yet. Contact admin.</div>`:''}
+  ${!S.focusMode&&myRecs.length>0?`<div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+    <div style="flex:1;height:6px;background:#e0dfd8;border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:#185FA5;border-radius:3px;transition:width 0.4s"></div></div>
+    <div style="font-size:12px;color:#888;white-space:nowrap;flex-shrink:0">${done} / ${myRecs.length} <span style="color:#185FA5;font-weight:600">${pct}%</span></div>
+  </div>`:''}
   ${S.focusMode?rFocusCard(myRecs,u):pageRecs.map(rec=>rCard(rec,u)).join('')}
   ${!S.focusMode&&totalPages>1?rPager(pg,totalPages,myRecs.length):''}
   </div>`;
@@ -570,7 +574,7 @@ function rFocusCard(myRecs,u){
       <span style="font-size:11px;color:#888">Focus view — one record at a time</span>
       ${isComplete?`<button id="focusNext" class="btn-primary btn-sm" style="margin-left:auto">Next → <kbd style="font-size:9px;opacity:0.7;font-family:monospace">'</kbd></button>`:''}
     </div>
-    ${rCard(rec,u)}
+    <div id="swipeCard" style="overflow:hidden">${rCard(rec,u)}</div>
     ${isComplete?`<div style="text-align:center;padding:10px 0 4px;font-size:12px;color:#888">Decision saved — <kbd style="font-family:monospace">'</kbd> or Space / → to advance &nbsp;·&nbsp; <kbd style="font-family:monospace">;</kbd> or ← to go back</div>`:'<div style="text-align:center;padding:8px 0 2px;font-size:11px;color:#aaa">Keyboard: <kbd style="font-family:monospace">Y</kbd>=Yes &nbsp;<kbd style="font-family:monospace">N</kbd>=No &nbsp;<kbd style="font-family:monospace">U</kbd>=Unclear &nbsp;<kbd style="font-family:monospace">T</kbd>=Topical &nbsp;<kbd style="font-family:monospace">\'</kbd>=Next &nbsp;<kbd style="font-family:monospace">;</kbd>=Back</div>'}
   </div>`;
 }
@@ -939,10 +943,10 @@ function attachEvents(){
   });
   $('focusNext')?.addEventListener('click',()=>{
     if(S.focusCurrent){if(!S.focusHistory)S.focusHistory=[];S.focusHistory.push(S.focusCurrent);}
-    S.focusCurrent=null;render();
+    S.focusCurrent=null;render();scrollToCard();
   });
   $('focusPrev')?.addEventListener('click',()=>{
-    if(S.focusHistory&&S.focusHistory.length>0){S.focusCurrent=S.focusHistory.pop();render();}
+    if(S.focusHistory&&S.focusHistory.length>0){S.focusCurrent=S.focusHistory.pop();render();scrollToCard();}
   });
   document.querySelectorAll('.topical-btn').forEach(b=>b.addEventListener('click',async()=>{
     const recId=b.dataset.rec;const u=S.user;
@@ -1255,15 +1259,43 @@ function getActiveQuestion(recId,u){
   }
   return null;
 }
-let _swipeX=null;
-document.addEventListener('touchstart',e=>{_swipeX=e.touches[0].clientX;},{passive:true});
+function scrollToCard(){const el=document.getElementById('swipeCard');if(el)el.scrollIntoView({block:'start',behavior:'instant'});}
+function animateCardIn(fromDir){
+  const c=document.getElementById('swipeCard');if(!c)return;
+  c.style.transition='none';c.style.transform=`translateX(${fromDir*110}vw)`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+    c.style.transition='transform 0.22s ease-out';c.style.transform='translateX(0)';
+  }));
+}
+let _swipeX=null,_swipeY=null,_swiping=false;
+document.addEventListener('touchstart',e=>{
+  if(!S.focusMode||!S.focusCurrent||S.screen!=='reviewer')return;
+  _swipeX=e.touches[0].clientX;_swipeY=e.touches[0].clientY;_swiping=false;
+  const c=document.getElementById('swipeCard');if(c){c.style.transition='none';c.style.transform='translateX(0)';}
+},{passive:true});
+document.addEventListener('touchmove',e=>{
+  if(_swipeX===null)return;
+  const dx=e.touches[0].clientX-_swipeX,dy=e.touches[0].clientY-_swipeY;
+  if(!_swiping&&Math.abs(dy)>Math.abs(dx)){_swipeX=null;return;}
+  _swiping=true;
+  const c=document.getElementById('swipeCard');if(c)c.style.transform=`translateX(${dx}px)`;
+},{passive:true});
 document.addEventListener('touchend',e=>{
-  if(_swipeX===null||!S.focusMode||!S.focusCurrent||S.screen!=='reviewer')return;
-  const dx=e.changedTouches[0].clientX-_swipeX;_swipeX=null;
-  if(Math.abs(dx)<50)return;
-  const recId=S.focusCurrent;const u=S.user;
-  if(dx<0){if(isFocusDone(recId,u)){if(!S.focusHistory)S.focusHistory=[];S.focusHistory.push(recId);S.focusCurrent=null;render();}}
-  else{if(S.focusHistory&&S.focusHistory.length>0){S.focusCurrent=S.focusHistory.pop();render();}}
+  if(_swipeX===null||!_swiping){_swipeX=null;_swiping=false;return;}
+  const dx=e.changedTouches[0].clientX-_swipeX;_swipeX=null;_swiping=false;
+  const c=document.getElementById('swipeCard'),recId=S.focusCurrent,u=S.user;
+  const snap=()=>{if(c){c.style.transition='transform 0.2s ease-out';c.style.transform='translateX(0)';}};
+  if(Math.abs(dx)<60){snap();return;}
+  const goNext=dx<0;
+  if(goNext&&!isFocusDone(recId,u)){snap();return;}
+  if(!goNext&&(!S.focusHistory||!S.focusHistory.length)){snap();return;}
+  const dir=goNext?-1:1;
+  if(c){c.style.transition='transform 0.2s ease-in';c.style.transform=`translateX(${dir*110}vw)`;}
+  setTimeout(()=>{
+    if(goNext){if(!S.focusHistory)S.focusHistory=[];S.focusHistory.push(recId);S.focusCurrent=null;}
+    else{S.focusCurrent=S.focusHistory.pop();}
+    render();scrollToCard();animateCardIn(-dir);
+  },200);
 },{passive:true});
 document.addEventListener('keydown',e=>{
   if(S.screen!=='reviewer')return;
@@ -1278,10 +1310,10 @@ document.addEventListener('keydown',e=>{
       if(e.key===' '||e.key==='ArrowRight'||e.key==='Enter'||e.key==="'"){
         e.preventDefault();
         if(!S.focusHistory)S.focusHistory=[];
-        S.focusHistory.push(recId);S.focusCurrent=null;render();
+        S.focusHistory.push(recId);S.focusCurrent=null;render();scrollToCard();
       } else if(e.key==='ArrowLeft'||e.key===';'){
         e.preventDefault();
-        if(S.focusHistory&&S.focusHistory.length>0){S.focusCurrent=S.focusHistory.pop();render();}
+        if(S.focusHistory&&S.focusHistory.length>0){S.focusCurrent=S.focusHistory.pop();render();scrollToCard();}
       }
       return;
     }
@@ -1302,7 +1334,7 @@ document.addEventListener('keydown',e=>{
       return;
     } else if(e.key==='ArrowLeft'||e.key===';'){
       e.preventDefault();
-      if(S.focusHistory&&S.focusHistory.length>0){S.focusCurrent=S.focusHistory.pop();render();}
+      if(S.focusHistory&&S.focusHistory.length>0){S.focusCurrent=S.focusHistory.pop();render();scrollToCard();}
       return;
     }
     if(val!==null){
