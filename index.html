@@ -1326,6 +1326,6 @@ document.addEventListener('keydown',e=>{
   catch(e){$('app').innerHTML=`<div class="card" style="color:#A32D2D;text-align:center;padding:2rem;max-width:500px;margin:2rem auto"><strong>Firebase connection error</strong><br><span style="font-size:12px;margin-top:8px;display:block">${e.message}</span></div>`;}
 })();
 </script>
-<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));}</script>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v='+VERSION.split(' ')[0]).catch(()=>{}));}</script>
 </body>
 </html>

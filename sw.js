@@ -1,4 +1,4 @@
-const CACHE = 'evisynth-v1';
+const CACHE = 'evisynth-' + (new URLSearchParams(self.location.search).get('v') || 'v1');
 const SHELL = ['./index.html', './leaderboard.html', './manifest.json', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', e => {
