@@ -169,7 +169,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v3.12 · 2026-05-19';
+const VERSION='v3.13 · 2026-05-19';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},decisionTs:{},assignments:{},pins:{},adjudications:{},topicalReviews:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusCurrent:null,focusHistory:[],showShortcuts:false,calibrationMode:false};
 let unsubs=[];
 
@@ -177,6 +177,7 @@ const $=id=>document.getElementById(id);
 function toast(msg,d=2800){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),d);}
 function setSync(s){S.syncStatus=s;const dot=$('syncDot'),lbl=$('syncLbl');if(dot)dot.className='sync-dot '+s;if(lbl)lbl.textContent=s==='live'?'Live':s==='syncing'?'Syncing…':'Offline';}
 function today(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function tsET(ts){if(!ts)return'';return new Intl.DateTimeFormat('en-CA',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(new Date(ts)).replace(',',' ');}
 function weekStart(){const d=new Date();d.setDate(d.getDate()-d.getDay());d.setHours(0,0,0,0);return d.getTime();}
 
 function getDec(recId,rev){
@@ -1034,13 +1035,13 @@ function attachEvents(){
             const d=getDec(r.id,rv);
             const done=d&&(d.verdict==='exclude'||d.verdict==='include'||d.verdict==='topical');
             const ts=d&&d.verdict==='topical'?((S.topicalReviews[r.id]||{})[rv]||0):((S.decisionTs[rv]||{})[r.id]||0);
-            row.push(done&&ts?new Date(ts).toISOString().slice(0,19).replace('T',' '):'');
+            row.push(done&&ts?tsET(ts):'');
           });
           const con=getConsolidated(r.id)||'pending';
           row.push(con);
           const compTs=REVS.filter(rv=>{const d=getDec(r.id,rv);return d&&(d.verdict==='exclude'||d.verdict==='include'||d.verdict==='topical');}).map(rv=>(S.decisionTs[rv]||{})[r.id]||0);
           const latest=compTs.length?Math.max(...compTs):0;
-          row.push(latest?new Date(latest).toISOString().slice(0,19).replace('T',' '):'');
+          row.push(latest?tsET(latest):'');
           const adjStatus=getAdjudicationStatus(r.id);
           row.push(adjStatus?'Yes':'No');
           row.push(Object.keys(S.adjudications[r.id]||{}).join(', '));
@@ -1087,7 +1088,7 @@ function attachEvents(){
         const d=getDec(r.id,rv);
         const completed=d&&(d.verdict==='exclude'||d.verdict==='include'||d.verdict==='topical');
         const ts=d&&d.verdict==='topical'?((S.topicalReviews[r.id]||{})[rv]||0):((S.decisionTs[rv]||{})[r.id]||0);
-        row.push(completed&&ts?new Date(ts).toISOString().slice(0,19).replace('T',' '):'');
+        row.push(completed&&ts?tsET(ts):'');
       });
       // consolidated verdict
       const con=getConsolidated(r.id)||'pending';
@@ -1097,7 +1098,7 @@ function attachEvents(){
         .filter(rv=>{const d=getDec(r.id,rv);return d&&(d.verdict==='exclude'||d.verdict==='include'||d.verdict==='topical');})
         .map(rv=>(S.decisionTs[rv]||{})[r.id]||0);
       const latestTs=completedTs.length?Math.max(...completedTs):0;
-      row.push(latestTs?new Date(latestTs).toISOString().slice(0,19).replace('T',' '):'');
+      row.push(latestTs?tsET(latestTs):'');
       row.push(getAdjudicationStatus(r.id)?'Yes':'No');
       rows.push(row);
     });
