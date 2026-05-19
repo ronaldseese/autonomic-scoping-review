@@ -169,7 +169,7 @@ const SAMPLE=[
   {id:'s10',rayyanId:'sample-10',title:'Autonomic reactivity during social tasks in children with ASD',authors:'Harris L, Clark N',year:2023,journal:'Autism',pmid:'',language:'eng',abstract:'Beat-to-beat heart rate and HRV were monitored continuously during a structured social interaction battery in 48 children with ASD and 48 controls. ASD children showed blunted cardiac deceleration during social attention tasks and reduced HRV recovery post-task. Social motivation scores mediated the relationship between autonomic reactivity and task engagement.'},
 ];
 
-const VERSION='v3.11 · 2026-05-17';
+const VERSION='v3.12 · 2026-05-19';
 let S={screen:'login',pinScreen:'select',user:null,isAdmin:false,adminTab:'assign',records:{},decisions:{},decisionTs:{},assignments:{},pins:{},adjudications:{},topicalReviews:{},syncStatus:'connecting',filterRev:'all',filterStat:'all',dx5:{},abstractOpen:{},page:1,PAGE:25,csvParsed:null,csvFileName:'',focusMode:false,focusCurrent:null,focusHistory:[],showShortcuts:false,calibrationMode:false};
 let unsubs=[];
 
@@ -464,10 +464,10 @@ function rCard(rec,u){
           <div style="font-size:11px;color:#888;margin-bottom:3px">${rec.rayyanId||rec.id} · ${rec.year||''} · <em>${rec.journal||''}</em>${pmidLink}${langTag}</div>
           <div style="font-size:14px;font-weight:600;line-height:1.4;color:#1a1a1a">${rec.title||'Untitled'}</div>
           <div style="font-size:12px;color:#666;margin-top:2px">${rec.authors||''}</div>
-          ${absSection}
         </div>
         <span class="badge badge-${con==='include'?'include':'exclude'}" style="flex-shrink:0;margin-top:2px">${con}</span>
       </div>
+      ${absSection}
       <div style="background:${verdictBg};border:1px solid ${verdictBorder};border-radius:7px;padding:10px 14px;font-size:12px;color:${verdictColor}">
         ${verdictIcon} <strong>Already ${con}d</strong> — agreed by ${agreedRevs.join(' and ')}. No further input needed from you on this record.
       </div>
@@ -511,11 +511,11 @@ function rCard(rec,u){
         <div style="font-size:11px;color:#888;margin-bottom:3px">${rec.rayyanId||rec.id} · ${rec.year||''} · <em>${rec.journal||''}</em>${pmidLink}${langTag}${isAdjudicator(rec.id,u)?` <span style="font-size:10px;background:#FBEAF0;color:#993556;padding:1px 6px;border-radius:3px;font-weight:600">⚖ Adjudication required</span>`:''}</div>
         <div style="font-size:14px;font-weight:600;line-height:1.4;color:#1a1a1a">${rec.title||'Untitled'}</div>
         <div style="font-size:12px;color:#666;margin-top:2px">${rec.authors||''}</div>
-        ${abstractSection}
-        ${topicalBtn}
       </div>
       <span class="badge badge-${badgeCls}" style="flex-shrink:0;margin-top:2px">${dec?dec.verdict:'pending'}</span>
     </div>
+    ${abstractSection}
+    ${topicalBtn}
     ${isTopical?'':`<div style="border-top:1px solid #f0efe8;margin-top:8px">${qRows}</div>`}
     ${decBar}
   </div>`;
@@ -561,10 +561,10 @@ function rFocusCard(myRecs,u){
       <button id="focusBack" class="btn-sm">← Back to list</button>
       ${hasPrev?`<button id="focusPrev" class="btn-sm">← Previous</button>`:''}
       <span style="font-size:11px;color:#888">Focus view — one record at a time</span>
-      ${isComplete?`<button id="focusNext" class="btn-primary btn-sm" style="margin-left:auto">Next → <kbd style="font-size:9px;opacity:0.7;font-family:monospace">Space</kbd></button>`:''}
+      ${isComplete?`<button id="focusNext" class="btn-primary btn-sm" style="margin-left:auto">Next → <kbd style="font-size:9px;opacity:0.7;font-family:monospace">'</kbd></button>`:''}
     </div>
     ${rCard(rec,u)}
-    ${isComplete?`<div style="text-align:center;padding:10px 0 4px;font-size:12px;color:#888">Decision saved — click <strong>Next →</strong> or press <strong>Space / →</strong> to continue.</div>`:'<div style="text-align:center;padding:8px 0 2px;font-size:11px;color:#aaa">Keyboard: <kbd style="font-family:monospace">Y</kbd>=Yes &nbsp;<kbd style="font-family:monospace">N</kbd>=No &nbsp;<kbd style="font-family:monospace">U</kbd>=Unclear &nbsp;<kbd style="font-family:monospace">T</kbd>=Topical review</div>'}
+    ${isComplete?`<div style="text-align:center;padding:10px 0 4px;font-size:12px;color:#888">Decision saved — <kbd style="font-family:monospace">'</kbd> or Space / → to advance &nbsp;·&nbsp; <kbd style="font-family:monospace">;</kbd> or ← to go back</div>`:'<div style="text-align:center;padding:8px 0 2px;font-size:11px;color:#aaa">Keyboard: <kbd style="font-family:monospace">Y</kbd>=Yes &nbsp;<kbd style="font-family:monospace">N</kbd>=No &nbsp;<kbd style="font-family:monospace">U</kbd>=Unclear &nbsp;<kbd style="font-family:monospace">T</kbd>=Topical &nbsp;<kbd style="font-family:monospace">\'</kbd>=Next &nbsp;<kbd style="font-family:monospace">;</kbd>=Back</div>'}
   </div>`;
 }
 function rPager(pg,total,count){
@@ -1248,6 +1248,16 @@ function getActiveQuestion(recId,u){
   }
   return null;
 }
+let _swipeX=null;
+document.addEventListener('touchstart',e=>{_swipeX=e.touches[0].clientX;},{passive:true});
+document.addEventListener('touchend',e=>{
+  if(_swipeX===null||!S.focusMode||!S.focusCurrent||S.screen!=='reviewer')return;
+  const dx=e.changedTouches[0].clientX-_swipeX;_swipeX=null;
+  if(Math.abs(dx)<50)return;
+  const recId=S.focusCurrent;const u=S.user;
+  if(dx<0){if(isFocusDone(recId,u)){if(!S.focusHistory)S.focusHistory=[];S.focusHistory.push(recId);S.focusCurrent=null;render();}}
+  else{if(S.focusHistory&&S.focusHistory.length>0){S.focusCurrent=S.focusHistory.pop();render();}}
+},{passive:true});
 document.addEventListener('keydown',e=>{
   if(S.screen!=='reviewer')return;
   // Ignore if user is typing in an input/textarea
@@ -1258,11 +1268,11 @@ document.addEventListener('keydown',e=>{
     const complete=isFocusDone(recId,u);
     // Navigation when complete
     if(complete){
-      if(e.key===' '||e.key==='ArrowRight'||e.key==='Enter'){
+      if(e.key===' '||e.key==='ArrowRight'||e.key==='Enter'||e.key==="'"){
         e.preventDefault();
         if(!S.focusHistory)S.focusHistory=[];
         S.focusHistory.push(recId);S.focusCurrent=null;render();
-      } else if(e.key==='ArrowLeft'){
+      } else if(e.key==='ArrowLeft'||e.key===';'){
         e.preventDefault();
         if(S.focusHistory&&S.focusHistory.length>0){S.focusCurrent=S.focusHistory.pop();render();}
       }
@@ -1283,7 +1293,7 @@ document.addEventListener('keydown',e=>{
       if(already)delete S.topicalReviews[recId][u];else S.topicalReviews[recId][u]=Date.now();
       render();saveTopical(recId,u,!already);
       return;
-    } else if(e.key==='ArrowLeft'){
+    } else if(e.key==='ArrowLeft'||e.key===';'){
       e.preventDefault();
       if(S.focusHistory&&S.focusHistory.length>0){S.focusCurrent=S.focusHistory.pop();render();}
       return;
