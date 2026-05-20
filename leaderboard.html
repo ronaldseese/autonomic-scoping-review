@@ -62,7 +62,7 @@ body{background:#0d0d0d;color:#fff;font-family:'Inter',sans-serif;min-height:100
   <div class="top-bar">
     <div>
       <div class="board-title">EviSynth Leaderboard</div>
-      <div class="board-sub">Translational Autism Laboratory · Autonomic Scoping Review · v1.9 · 2026-04-29</div>
+      <div class="board-sub">Translational Autism Laboratory · Autonomic Scoping Review · v1.10 · 2026-05-20</div>
     </div>
     <div class="sync-pill"><span class="dot loading" id="syncDot"></span><span id="syncLbl">Connecting…</span></div>
   </div>
@@ -132,7 +132,7 @@ function lastWeekBounds(){
 }
 function fmtDate(d){return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
 
-function countCompleted(decisions){
+function countCompleted(decisions,topicals){
   const counts={};REVS.forEach(r=>{counts[r]=0;});
   Object.entries(decisions).forEach(([rev,recs])=>{
     if(!counts.hasOwnProperty(rev))return;
@@ -141,11 +141,14 @@ function countCompleted(decisions){
       if(QS.some(q=>ans[q]==='yes')||QS.every(q=>ans[q]))counts[rev]++;
     });
   });
+  Object.entries(topicals||{}).forEach(([rev,recs])=>{
+    if(!counts.hasOwnProperty(rev))return;
+    counts[rev]+=Object.keys(recs).length;
+  });
   return counts;
 }
 
-function countWeek(decisions,ws,we){
-  // Use updatedAt timestamp on decision docs to count completions this week
+function countWeek(decisions,topicals,ws,we){
   const counts={};REVS.forEach(r=>{counts[r]=0;});
   Object.entries(decisions).forEach(([rev,recs])=>{
     if(!counts.hasOwnProperty(rev))return;
@@ -155,6 +158,12 @@ function countWeek(decisions,ws,we){
       const ans=data.answers||data;
       const QS=['q1','q3','q4','q5'];
       if(QS.some(q=>ans[q]==='yes')||QS.every(q=>ans[q]))counts[rev]++;
+    });
+  });
+  Object.entries(topicals||{}).forEach(([rev,recs])=>{
+    if(!counts.hasOwnProperty(rev))return;
+    Object.entries(recs).forEach(([recId,ts])=>{
+      if(ts>=ws&&ts<=we)counts[rev]++;
     });
   });
   return counts;
@@ -214,22 +223,26 @@ function updateTicker(allCounts,weekCounts){
 }
 
 let decisionsData={};
+let topicalData={};
 let scoreEventsData=[];
 
 function refresh(){
   const{start,end,sun,sat}=weekBounds();
   document.getElementById('weekLabel').textContent='Week of '+fmtDate(sun);
   document.getElementById('weekRange').textContent=fmtDate(sun)+' – '+fmtDate(sat);
-  const allCounts=countCompleted(decisionsData);
-  const weekCounts=countWeek(decisionsData,start,end);
-  const totalRecs=Object.keys(Object.values(decisionsData).reduce((acc,recs)=>{Object.keys(recs).forEach(k=>acc[k]=1);return acc},{})).length;
+  const allCounts=countCompleted(decisionsData,topicalData);
+  const weekCounts=countWeek(decisionsData,topicalData,start,end);
+  const allTouched={};
+  Object.values(decisionsData).forEach(recs=>Object.keys(recs).forEach(k=>allTouched[k]=1));
+  Object.values(topicalData).forEach(recs=>Object.keys(recs).forEach(k=>allTouched[k]=1));
+  const totalRecs=Object.keys(allTouched).length;
   document.getElementById('totalRecords').textContent=totalRecs+' unique records touched';
   renderBars('weekBars',weekCounts);
   renderBars('allBars',allCounts);
 
   // Last week
   const lw=lastWeekBounds();
-  const lastWeekCounts=countWeek(decisionsData,lw.start,lw.end);
+  const lastWeekCounts=countWeek(decisionsData,topicalData,lw.start,lw.end);
   const lwLabel=document.getElementById('lastWeekLabel');
   const lwRange=document.getElementById('lastWeekRange');
   const lwWinner=document.getElementById('lastWeekWinner');
@@ -265,6 +278,16 @@ onSnapshot(collection(db,'decisions'),snap=>{
   document.getElementById('syncLbl').textContent='Live';
   refresh();
 },()=>{document.getElementById('syncDot').className='dot';document.getElementById('syncLbl').textContent='Offline';});
+
+onSnapshot(collection(db,'topical_reviews'),snap=>{
+  topicalData={};
+  snap.forEach(d=>{
+    const x=d.data();
+    if(!topicalData[x.rev])topicalData[x.rev]={};
+    topicalData[x.rev][x.recId]=x.markedAt||0;
+  });
+  refresh();
+});
 
 onSnapshot(collection(db,'score_events'),snap=>{
   scoreEventsData=[];snap.forEach(d=>scoreEventsData.push(d.data()));refresh();
