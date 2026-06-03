@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>EviSynth — IRR Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;background:#f5f4f0;color:#1a1a1a;min-height:100vh}
+header{background:#185FA5;color:#fff;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.hdr-title{font-size:17px;font-weight:700;letter-spacing:0.2px}
+.hdr-sub{font-size:12px;opacity:0.75;margin-top:2px}
+.sync{display:flex;align-items:center;gap:7px;font-size:12px;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:#888;flex-shrink:0}
+.dot.live{background:#4ade80;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+main{max-width:920px;margin:0 auto;padding:24px 16px}
+.card{background:#fff;border:1px solid #e0dfd8;border-radius:10px;padding:20px;margin-bottom:20px}
+h2{font-size:15px;font-weight:700;margin-bottom:4px}
+.subtitle{font-size:12px;color:#666;margin-bottom:18px;line-height:1.5}
+/* Summary table */
+.tbl-wrap{overflow-x:auto}
+table.summary{width:100%;border-collapse:collapse;font-size:14px;min-width:520px}
+table.summary thead th{text-align:left;padding:8px 14px;border-bottom:2px solid #e0dfd8;font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:#888;font-weight:600;white-space:nowrap}
+table.summary tbody tr.main-row{cursor:pointer}
+table.summary tbody tr.main-row:hover td{background:#f9f8f4}
+table.summary tbody td{padding:11px 14px;border-bottom:1px solid #f0efea;vertical-align:middle}
+table.summary tbody tr.drill-row td{padding:0;border-bottom:1px solid #e0dfd8}
+.pair-label{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;letter-spacing:0.3px}
+.kval{font-weight:700;font-size:14px;font-variant-numeric:tabular-nums}
+.badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap}
+.b-great{background:#d1fae5;color:#065f46}
+.b-mod{background:#fef3c7;color:#92400e}
+.b-low{background:#fee2e2;color:#991b1b}
+.warn-flag{font-size:13px;margin-left:3px;vertical-align:middle}
+.unstable{color:#aaa;font-size:11px;cursor:help}
+.chevron{color:#bbb;font-size:11px;user-select:none}
+/* Drill-down */
+.drill-body{display:none;padding:16px 20px 20px;background:#fafaf7;border-top:1px solid #e8e7e0}
+.drill-body.open{display:block}
+.drill-grid{display:grid;grid-template-columns:auto 1fr;gap:20px;align-items:start}
+@media(max-width:600px){.drill-grid{grid-template-columns:1fr}}
+/* Contingency table */
+table.ctable{border-collapse:collapse;font-size:13px;margin-top:4px}
+table.ctable th,table.ctable td{padding:8px 12px;border:1px solid #ddd;text-align:center;white-space:nowrap}
+table.ctable th{background:#f0efea;font-weight:600;font-size:12px}
+table.ctable .agree{background:#d1fae5;font-weight:600}
+table.ctable .disagree{background:#fee2e2;font-weight:600}
+table.ctable .total-row th,table.ctable .total-row td{background:#f0efea;font-weight:700}
+table.ctable .corner{background:#e8e7e0}
+/* Stats list */
+.stats{list-style:none;font-size:13px}
+.stats li{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #ebebeb;gap:12px}
+.stats li:last-child{border-bottom:none}
+.stats .lbl{color:#555}
+.stats .val{font-weight:600;text-align:right}
+.drill-warn{margin-top:12px;padding:8px 12px;background:#fef3c7;border-radius:7px;font-size:12px;color:#92400e;display:flex;align-items:center;gap:6px}
+.unstable-note{margin-top:10px;padding:7px 12px;background:#f0f0f0;border-radius:7px;font-size:12px;color:#555;display:flex;align-items:center;gap:6px}
+/* Legend */
+.legend{display:flex;flex-wrap:wrap;gap:14px;margin-top:16px;font-size:12px;color:#666;padding-top:14px;border-top:1px solid #f0efea}
+.leg{display:flex;align-items:center;gap:5px}
+.leg-dot{width:10px;height:10px;border-radius:3px;flex-shrink:0}
+/* Empty / loading */
+.empty{color:#888;font-style:italic;padding:28px;text-align:center}
+#loading{color:#888;padding:48px;text-align:center;font-style:italic;font-size:14px}
+/* Method note */
+.method{background:#f0f4fa;border:1px solid #c9d8ef;border-radius:8px;padding:14px 18px;font-size:12px;color:#2c4a72;line-height:1.6}
+.method strong{font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="hdr-title">EviSynth — IRR Dashboard</div>
+    <div class="hdr-sub">Translational Autism Laboratory · Autonomic Scoping Review · v1.0 · 2026-05-20</div>
+  </div>
+  <div class="sync">
+    <div class="dot" id="syncDot"></div>
+    <span id="syncLbl">Connecting…</span>
+  </div>
+</header>
+
+<main>
+  <div id="loading">Loading screening data…</div>
+  <div id="content" style="display:none">
+
+    <div class="card">
+      <h2>Inter-Rater Reliability Summary</h2>
+      <p class="subtitle">
+        All reviewer pairs with at least one co-screened record · Binary classification:
+        <strong>include + topical → Forward</strong> &nbsp;·&nbsp; <strong>all exclude variants → Out</strong>
+        · Click any row to expand the contingency table
+      </p>
+      <div class="tbl-wrap">
+        <table class="summary">
+          <thead>
+            <tr>
+              <th>Pair</th>
+              <th>n</th>
+              <th>Agreement</th>
+              <th>κ (Cohen)</th>
+              <th>Strength</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="summaryBody"></tbody>
+        </table>
+      </div>
+      <div class="legend">
+        <span class="leg"><span class="leg-dot" style="background:#d1fae5"></span> Substantial / Almost perfect (κ ≥ 0.60)</span>
+        <span class="leg"><span class="leg-dot" style="background:#fef3c7"></span> Moderate (0.41 – 0.59)</span>
+        <span class="leg"><span class="leg-dot" style="background:#fee2e2"></span> Slight / Fair / Poor (κ ≤ 0.40)</span>
+        <span class="leg">⚠️ = kappa below 0.60 — adjudication review recommended</span>
+        <span class="leg"><span style="color:#aaa">†</span> = n &lt; 30, estimate may be unstable</span>
+      </div>
+    </div>
+
+    <div class="card method">
+      <strong>Method:</strong> Decisions are binarized as Forward (include or topical) vs. Out (any exclude variant).
+      Only records where <em>both</em> reviewers in a pair have reached a complete decision are included in each pair's count.
+      Cohen's κ is computed as (P<sub>o</sub> − P<sub>e</sub>) / (1 − P<sub>e</sub>).
+      Strength labels follow Landis &amp; Koch (1977):
+      &lt;0 Poor · 0.00–0.20 Slight · 0.21–0.40 Fair · 0.41–0.60 Moderate · 0.61–0.80 Substantial · 0.81–1.00 Almost perfect.
+      Pairs with no co-screened records are omitted. Pairs with n &lt; 30 are flagged as potentially unstable.
+    </div>
+
+  </div>
+</main>
+
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
+import{getFirestore,collection,onSnapshot}from"https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
+
+const FB={apiKey:"AIzaSyC8eLWQGJTX_cftqnJw2B-ltE8U533TlyE",authDomain:"autonomic-scoping-review-9b5fb.firebaseapp.com",projectId:"autonomic-scoping-review-9b5fb",storageBucket:"autonomic-scoping-review-9b5fb.firebasestorage.app",messagingSenderId:"431307735290",appId:"1:431307735290:web:f574bda7558022f35dc943"};
+const db=getFirestore(initializeApp(FB));
+
+const REVS=['AF','JH','LH','CS','RS','GP'];
+const QS=['q1','q3','q4','q5'];
+
+let decisionsData={};  // {rev: {recId: {answers:{q1,q3,q4,q5}}}}
+let topicalData={};    // {rev: {recId: markedAt}}
+let loaded={dec:false,top:false};
+
+// Returns binary verdict: 1=forward, 0=out, null=incomplete
+function verdict(recId,rev){
+  if((topicalData[rev]||{})[recId]!==undefined)return 1;          // topical → forward
+  const ans=(( decisionsData[rev]||{})[recId]||{}).answers||{};
+  if(QS.some(q=>ans[q]==='yes'))return 0;                         // any exclusion trigger → out
+  if(QS.every(q=>ans[q]))return 1;                                // all no → include → forward
+  return null;                                                     // incomplete
+}
+
+function computePairs(){
+  // Build completed-record sets per reviewer
+  const done={};
+  REVS.forEach(r=>{
+    done[r]=new Set();
+    Object.keys(decisionsData[r]||{}).forEach(id=>{if(verdict(id,r)!==null)done[r].add(id);});
+    Object.keys(topicalData[r]||{}).forEach(id=>done[r].add(id));
+  });
+
+  const pairs=[];
+  for(let i=0;i<REVS.length;i++){
+    for(let j=i+1;j<REVS.length;j++){
+      const r1=REVS[i],r2=REVS[j];
+      let a=0,b=0,c=0,d=0;
+      // Iterate over the smaller set for speed
+      const [small,big,sr,br]=done[r1].size<=done[r2].size
+        ?[done[r1],done[r2],r1,r2]:[done[r2],done[r1],r2,r1];
+      small.forEach(id=>{
+        if(!big.has(id))return;
+        const vs=verdict(id,sr),vb=verdict(id,br);
+        if(vs===null||vb===null)return;
+        // Map back to r1/r2 orientation
+        const v1=sr===r1?vs:vb, v2=sr===r1?vb:vs;
+        if(v1===1&&v2===1)a++;
+        else if(v1===1&&v2===0)b++;
+        else if(v1===0&&v2===1)c++;
+        else d++;
+      });
+      const n=a+b+c+d;
+      if(n===0)continue;
+      const po=(a+d)/n;
+      const p1f=(a+b)/n, p2f=(a+c)/n;
+      const pe=p1f*p2f+(1-p1f)*(1-p2f);
+      const kappa=pe===1?1:(po-pe)/(1-pe);
+      pairs.push({r1,r2,n,a,b,c,d,po,kappa});
+    }
+  }
+  return pairs.sort((x,y)=>y.kappa-x.kappa);
+}
+
+function kappaLabel(k){
+  if(k<0)return'Poor';if(k<0.20)return'Slight';if(k<0.40)return'Fair';
+  if(k<0.60)return'Moderate';if(k<0.80)return'Substantial';return'Almost perfect';
+}
+function badgeClass(k){return k>=0.60?'b-great':k>=0.40?'b-mod':'b-low';}
+
+function render(){
+  if(!loaded.dec||!loaded.top)return;
+  document.getElementById('loading').style.display='none';
+  document.getElementById('content').style.display='';
+
+  const pairs=computePairs();
+  const tbody=document.getElementById('summaryBody');
+
+  if(pairs.length===0){
+    tbody.innerHTML='<tr><td colspan="6" class="empty">No co-screened records found yet — pairs will appear as reviewers complete shared assignments.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML=pairs.map((p,i)=>{
+    const pct=(p.po*100).toFixed(1)+'%';
+    const kStr=p.kappa.toFixed(3);
+    const label=kappaLabel(p.kappa);
+    const bc=badgeClass(p.kappa);
+    const warnFlag=p.kappa<0.60?'<span class="warn-flag" title="Kappa below 0.60 — review recommended">⚠️</span>':'';
+    const unstMark=p.n<30?`<span class="unstable" title="n<30: estimate may be unstable"> †</span>`:'';
+    return`<tr class="main-row" id="mrow-${i}" onclick="toggleDrill(${i})" title="Click to expand contingency table">
+        <td><span class="pair-label">${p.r1} × ${p.r2}</span></td>
+        <td>${p.n}${unstMark}</td>
+        <td>${pct}</td>
+        <td><span class="kval">${kStr}</span>${warnFlag}</td>
+        <td><span class="badge ${bc}">${label}</span></td>
+        <td><span class="chevron" id="chev-${i}">▼</span></td>
+      </tr>
+      <tr class="drill-row" id="drow-${i}">
+        <td colspan="6">
+          <div class="drill-body" id="dbody-${i}">
+            ${renderDrill(p,i)}
+          </div>
+        </td>
+      </tr>`;
+  }).join('');
+}
+
+function renderDrill(p,i){
+  const pct=(p.po*100).toFixed(1);
+  const warn=p.kappa<0.60
+    ?`<div class="drill-warn">⚠️ Kappa below 0.60 — consider targeted adjudication review for this pair.</div>`:'';
+  const unstable=p.n<30
+    ?`<div class="unstable-note">† n = ${p.n} is below 30. This estimate may be unstable — interpret with caution until more co-screened records accumulate.</div>`:'';
+  return`<div class="drill-grid">
+    <div>
+      <table class="ctable">
+        <thead>
+          <tr>
+            <th class="corner"></th>
+            <th>${p.r2}: Forward</th>
+            <th>${p.r2}: Out</th>
+            <th>Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th>${p.r1}: Forward</th>
+            <td class="agree">${p.a}</td>
+            <td class="disagree">${p.b}</td>
+            <td>${p.a+p.b}</td>
+          </tr>
+          <tr>
+            <th>${p.r1}: Out</th>
+            <td class="disagree">${p.c}</td>
+            <td class="agree">${p.d}</td>
+            <td>${p.c+p.d}</td>
+          </tr>
+          <tr class="total-row">
+            <th>Total</th>
+            <td>${p.a+p.c}</td>
+            <td>${p.b+p.d}</td>
+            <td>${p.n}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <ul class="stats">
+        <li><span class="lbl">Co-screened records (n)</span><span class="val">${p.n}</span></li>
+        <li><span class="lbl">Both Forward (agree)</span><span class="val">${p.a}</span></li>
+        <li><span class="lbl">Both Out (agree)</span><span class="val">${p.d}</span></li>
+        <li><span class="lbl">Total agreements</span><span class="val">${p.a+p.d} (${pct}%)</span></li>
+        <li><span class="lbl">${p.r1} Forward / ${p.r2} Out</span><span class="val">${p.b}</span></li>
+        <li><span class="lbl">${p.r1} Out / ${p.r2} Forward</span><span class="val">${p.c}</span></li>
+        <li><span class="lbl">Total disagreements</span><span class="val">${p.b+p.c}</span></li>
+        <li><span class="lbl">Cohen's κ</span><span class="val">${p.kappa.toFixed(4)}</span></li>
+        <li><span class="lbl">Strength (Landis &amp; Koch)</span><span class="val">${kappaLabel(p.kappa)}</span></li>
+      </ul>
+      ${warn}${unstable}
+    </div>
+  </div>`;
+}
+
+window.toggleDrill=function(i){
+  const body=document.getElementById('dbody-'+i);
+  const chev=document.getElementById('chev-'+i);
+  if(!body)return;
+  const open=body.classList.toggle('open');
+  if(chev)chev.textContent=open?'▲':'▼';
+};
+
+// --- Firebase listeners ---
+onSnapshot(collection(db,'decisions'),snap=>{
+  decisionsData={};
+  snap.forEach(d=>{
+    const x=d.data();
+    if(!decisionsData[x.rev])decisionsData[x.rev]={};
+    decisionsData[x.rev][x.recId]={answers:x.answers||{}};
+  });
+  document.getElementById('syncDot').className='dot live';
+  document.getElementById('syncLbl').textContent='Live';
+  loaded.dec=true;
+  render();
+},()=>{
+  document.getElementById('syncDot').className='dot';
+  document.getElementById('syncLbl').textContent='Offline';
+});
+
+onSnapshot(collection(db,'topical_reviews'),snap=>{
+  topicalData={};
+  snap.forEach(d=>{
+    const x=d.data();
+    if(!topicalData[x.rev])topicalData[x.rev]={};
+    topicalData[x.rev][x.recId]=x.markedAt||0;
+  });
+  loaded.top=true;
+  render();
+});
+</script>
+</body>
+</html>
