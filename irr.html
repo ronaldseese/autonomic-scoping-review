@@ -72,7 +72,7 @@ table.ctable .corner{background:#e8e7e0}
 <header>
   <div>
     <div class="hdr-title">EviSynth — IRR Dashboard</div>
-    <div class="hdr-sub">Translational Autism Laboratory · Autonomic Scoping Review · v1.0 · 2026-05-20</div>
+    <div class="hdr-sub">Translational Autism Laboratory · Autonomic Scoping Review · v1.1 · 2026-06-05</div>
   </div>
   <div class="sync">
     <div class="dot" id="syncDot"></div>
@@ -99,6 +99,7 @@ table.ctable .corner{background:#e8e7e0}
               <th>n</th>
               <th>Agreement</th>
               <th>κ (Cohen)</th>
+              <th>AC1 (Gwet)</th>
               <th>Strength</th>
               <th></th>
             </tr>
@@ -110,7 +111,7 @@ table.ctable .corner{background:#e8e7e0}
         <span class="leg"><span class="leg-dot" style="background:#d1fae5"></span> Substantial / Almost perfect (κ ≥ 0.60)</span>
         <span class="leg"><span class="leg-dot" style="background:#fef3c7"></span> Moderate (0.41 – 0.59)</span>
         <span class="leg"><span class="leg-dot" style="background:#fee2e2"></span> Slight / Fair / Poor (κ ≤ 0.40)</span>
-        <span class="leg">⚠️ = kappa below 0.60 — adjudication review recommended</span>
+        <span class="leg">⚠️ = κ or AC1 below 0.60 — adjudication review recommended</span>
         <span class="leg"><span style="color:#aaa">†</span> = n &lt; 30, estimate may be unstable</span>
       </div>
     </div>
@@ -118,8 +119,10 @@ table.ctable .corner{background:#e8e7e0}
     <div class="card method">
       <strong>Method:</strong> Decisions are binarized as Forward (include or topical) vs. Out (any exclude variant).
       Only records where <em>both</em> reviewers in a pair have reached a complete decision are included in each pair's count.
-      Cohen's κ is computed as (P<sub>o</sub> − P<sub>e</sub>) / (1 − P<sub>e</sub>).
-      Strength labels follow Landis &amp; Koch (1977):
+      <strong>Cohen's κ</strong> = (P<sub>o</sub> − P<sub>e</sub>) / (1 − P<sub>e</sub>), where P<sub>e</sub> is chance agreement under marginal independence.
+      <strong>Gwet's AC1</strong> = (P<sub>o</sub> − P<sub>e,gwet</sub>) / (1 − P<sub>e,gwet</sub>), where P<sub>e,gwet</sub> = 2π₁(1−π₁) and π₁ is the average forward rate across both reviewers.
+      AC1 is more stable than κ when one category dominates (the prevalence paradox) — common in title/abstract screening where most records are excluded (Wongpakaran et al., 2013; PMID 29238424).
+      Strength labels (both statistics) follow Landis &amp; Koch (1977):
       &lt;0 Poor · 0.00–0.20 Slight · 0.21–0.40 Fair · 0.41–0.60 Moderate · 0.61–0.80 Substantial · 0.81–1.00 Almost perfect.
       Pairs with no co-screened records are omitted. Pairs with n &lt; 30 are flagged as potentially unstable.
     </div>
@@ -184,7 +187,11 @@ function computePairs(){
       const p1f=(a+b)/n, p2f=(a+c)/n;
       const pe=p1f*p2f+(1-p1f)*(1-p2f);
       const kappa=pe===1?1:(po-pe)/(1-pe);
-      pairs.push({r1,r2,n,a,b,c,d,po,kappa});
+      // Gwet's AC1 — stable under prevalence imbalance
+      const pi1=(p1f+p2f)/2;                      // avg forward rate across both reviewers
+      const pe_gwet=2*pi1*(1-pi1);
+      const ac1=pe_gwet===1?1:(po-pe_gwet)/(1-pe_gwet);
+      pairs.push({r1,r2,n,a,b,c,d,po,kappa,ac1});
     }
   }
   return pairs.sort((x,y)=>y.kappa-x.kappa);
@@ -205,27 +212,32 @@ function render(){
   const tbody=document.getElementById('summaryBody');
 
   if(pairs.length===0){
-    tbody.innerHTML='<tr><td colspan="6" class="empty">No co-screened records found yet — pairs will appear as reviewers complete shared assignments.</td></tr>';
+    tbody.innerHTML='<tr><td colspan="7" class="empty">No co-screened records found yet — pairs will appear as reviewers complete shared assignments.</td></tr>';
     return;
   }
 
   tbody.innerHTML=pairs.map((p,i)=>{
     const pct=(p.po*100).toFixed(1)+'%';
     const kStr=p.kappa.toFixed(3);
+    const ac1Str=p.ac1.toFixed(3);
     const label=kappaLabel(p.kappa);
+    const ac1Label=kappaLabel(p.ac1);
     const bc=badgeClass(p.kappa);
+    const ac1bc=badgeClass(p.ac1);
     const warnFlag=p.kappa<0.60?'<span class="warn-flag" title="Kappa below 0.60 — review recommended">⚠️</span>':'';
+    const ac1WarnFlag=p.ac1<0.60?'<span class="warn-flag" title="AC1 below 0.60 — review recommended">⚠️</span>':'';
     const unstMark=p.n<30?`<span class="unstable" title="n<30: estimate may be unstable"> †</span>`:'';
     return`<tr class="main-row" id="mrow-${i}" onclick="toggleDrill(${i})" title="Click to expand contingency table">
         <td><span class="pair-label">${p.r1} × ${p.r2}</span></td>
         <td>${p.n}${unstMark}</td>
         <td>${pct}</td>
         <td><span class="kval">${kStr}</span>${warnFlag}</td>
+        <td><span class="kval">${ac1Str}</span>${ac1WarnFlag}</td>
         <td><span class="badge ${bc}">${label}</span></td>
         <td><span class="chevron" id="chev-${i}">▼</span></td>
       </tr>
       <tr class="drill-row" id="drow-${i}">
-        <td colspan="6">
+        <td colspan="7">
           <div class="drill-body" id="dbody-${i}">
             ${renderDrill(p,i)}
           </div>
@@ -283,7 +295,8 @@ function renderDrill(p,i){
         <li><span class="lbl">${p.r1} Out / ${p.r2} Forward</span><span class="val">${p.c}</span></li>
         <li><span class="lbl">Total disagreements</span><span class="val">${p.b+p.c}</span></li>
         <li><span class="lbl">Cohen's κ</span><span class="val">${p.kappa.toFixed(4)}</span></li>
-        <li><span class="lbl">Strength (Landis &amp; Koch)</span><span class="val">${kappaLabel(p.kappa)}</span></li>
+        <li><span class="lbl">Gwet's AC1</span><span class="val">${p.ac1.toFixed(4)}</span></li>
+        <li><span class="lbl">Strength (Landis &amp; Koch)</span><span class="val">${kappaLabel(p.kappa)} / ${kappaLabel(p.ac1)}</span></li>
       </ul>
       ${warn}${unstable}
     </div>
